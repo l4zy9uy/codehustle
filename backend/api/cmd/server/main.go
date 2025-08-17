@@ -12,7 +12,6 @@ import (
 	"codehustle/backend/api/internal/config"
 	"codehustle/backend/api/internal/db"
 	"codehustle/backend/api/internal/middleware"
-	"codehustle/backend/api/internal/models"
 	"codehustle/backend/api/internal/routes"
 )
 
@@ -25,13 +24,10 @@ func main() {
 	if err := db.Connect(); err != nil {
 		panic(err)
 	}
-	// Auto-migrate models
-	db.DB.AutoMigrate(
-		&models.Course{},
-		&models.CourseEnrollment{},
-		&models.Assignment{},
-		&models.Submission{},
-	)
+	// Run SQL migrations
+	if err := db.Migrate(); err != nil {
+		panic(fmt.Sprintf("database migration failed: %v", err))
+	}
 
 	r := gin.Default()
 
