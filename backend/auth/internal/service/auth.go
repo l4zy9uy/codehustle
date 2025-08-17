@@ -54,11 +54,7 @@ func issueTokensForUser(u *models.User, startNewFamily bool, familyID string) (*
 		return nil, err
 	}
 
-	roles := make([]string, 0, len(u.Roles))
-	for _, r := range u.Roles {
-		roles = append(roles, r.Name)
-	}
-	access, err := crypto.MintAccess(u.ID, u.Email, roles, familyID)
+	access, err := crypto.MintAccess(u.ID, u.Email, familyID)
 	if err != nil {
 		return nil, err
 	}

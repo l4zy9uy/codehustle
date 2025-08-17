@@ -24,6 +24,7 @@ func RegisterRoutes(r *gin.RouterGroup) {
 	v1.GET("/.well-known/jwks.json", handler.Jwks)
 
 	v1Auth := v1.Group("/")
+	// keep JWT auth only for /me endpoint
 	v1Auth.Use(middleware.JWT())
 	{
 		v1Auth.GET("/me", handler.Me)

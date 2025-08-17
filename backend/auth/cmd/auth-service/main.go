@@ -11,7 +11,11 @@ import (
 	"codehustle/backend/auth/internal/models"
 	"codehustle/backend/auth/internal/routes"
 
+	_ "codehustle/backend/auth/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func cors() gin.HandlerFunc {
@@ -48,6 +52,8 @@ func main() {
 	r.Use(cors())
 	api := r.Group("/api")
 	routes.RegisterRoutes(api)
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	port := config.Get("PORT")
 	if port == "" {

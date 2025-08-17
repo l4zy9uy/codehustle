@@ -14,6 +14,5 @@ func Me(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"id":    cl.Sub,
 		"email": cl.Email,
-		"roles": cl.Roles,
 	})
 }

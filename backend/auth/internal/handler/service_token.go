@@ -36,7 +36,7 @@ func ServiceToken(c *gin.Context) {
 		return
 	}
 	_ = time.Duration(parseEnvInt("SERVICE_TOKEN_TTL_MINUTES", 15)) * time.Minute
-	at, err := crypto.MintAccess(sc.ID, sc.Name, []string{"judge_worker"}, "")
+	at, err := crypto.MintAccess(sc.ID, sc.Name, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "issue_failed"})
 		return

@@ -10,16 +10,13 @@ import (
 )
 
 type AccessClaims struct {
-	Sub   string   `json:"sub"`
-	Email string   `json:"email"`
-	Roles []string `json:"roles"`
-	SID   string   `json:"sid"`
+	Sub   string `json:"sub"`
+	Email string `json:"email"`
+	SID   string `json:"sid"`
 	jwt.RegisteredClaims
 }
 
-func (a *AccessClaims) GetRoles() []string { return a.Roles }
-
-func MintAccess(sub, email string, roles []string, sid string) (string, error) {
+func MintAccess(sub, email string, sid string) (string, error) {
 	ks, err := Current()
 	if err != nil {
 		return "", err
@@ -30,7 +27,6 @@ func MintAccess(sub, email string, roles []string, sid string) (string, error) {
 	claims := AccessClaims{
 		Sub:   sub,
 		Email: email,
-		Roles: roles,
 		SID:   sid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    config.Get("JWT_ISS"),
