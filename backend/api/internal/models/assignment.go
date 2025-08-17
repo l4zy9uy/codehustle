@@ -9,7 +9,7 @@ type Assignment struct {
 	Title       string     `gorm:"size:200;not null" json:"title"`
 	Description string     `gorm:"type:text" json:"description,omitempty"`
 	Difficulty  string     `gorm:"size:50" json:"difficulty"`
-	TestCases   string     `gorm:"type:json;not null" json:"test_cases"`
+	TestCases   []TestCase `gorm:"foreignKey:AssignmentID" json:"test_cases"`
 	IsPublished bool       `gorm:"default:false" json:"is_published"`
 	Deadline    *time.Time `json:"deadline,omitempty"`
 	CreatedAt   time.Time  `gorm:"autoCreateTime" json:"created_at"`
