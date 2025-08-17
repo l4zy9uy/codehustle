@@ -11,8 +11,6 @@ import (
 	"codehustle/backend/auth/internal/models"
 	"codehustle/backend/auth/internal/routes"
 
-	_ "codehustle/backend/auth/docs"
-
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -42,7 +40,12 @@ func main() {
 	config.EnsureDefaults()
 
 	db.Connect()
-	db.DB.AutoMigrate(&models.User{}, &models.Role{}, &models.UserRole{}, &models.OAuthIdentity{}, &models.RefreshToken{}, &models.EmailVerificationToken{}, &models.PasswordResetToken{}, &models.ServiceClient{}, &models.AuthAuditLog{})
+	if err := db.DB.AutoMigrate(
+		&models.User{}, &models.Role{}, &models.UserRole{}, &models.OAuthIdentity{}, &models.RefreshToken{},
+		&models.EmailVerificationToken{}, &models.PasswordResetToken{}, &models.ServiceClient{}, &models.AuthAuditLog{},
+	); err != nil {
+		panic(err)
+	}
 
 	if err := crypto.LoadKeys(); err != nil {
 		panic(err)
