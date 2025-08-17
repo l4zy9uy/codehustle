@@ -1,0 +1,8 @@
+# HTTP origin behind the tunnel (intended)
+http://app.codehustle.space {
+    respond "Codehustle app is coming soon." 200
+}
+
+http://api.codehustle.space {
+    respond "API is coming soon." 200
+}
