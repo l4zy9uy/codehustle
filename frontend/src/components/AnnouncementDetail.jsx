@@ -14,8 +14,8 @@ export default function AnnouncementDetail({ announcement }) {
 
     return (
         <>
-            <Anchor size="sm" onClick={() => navigate('/announcements')} style={{ cursor: 'pointer' }}>
-                ← Back to Announcements
+            <Anchor size="sm" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
+                ← Back to Home
             </Anchor>
             <Card withBorder shadow="sm" p="lg" style={{ maxWidth: 800, width: '100%', margin: '1rem auto' }}>
                 <Text size="xl" fw={600}>{title}</Text>

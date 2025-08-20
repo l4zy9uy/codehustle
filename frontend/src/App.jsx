@@ -2,11 +2,10 @@ import { Navigate, Routes, Route } from 'react-router-dom';
 import Login from "./pages/Login.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AppLayout from "./components/AppLayout.jsx";
-import StudentHome from "./pages/StudentHome.jsx";
 import Problems from "./pages/Problems.jsx";
 import Courses from "./pages/Courses.jsx";
 import Submissions from "./pages/Submissions.jsx";
-import Announcements from "./pages/Announcements.jsx";
+import Home from "./pages/Home.jsx";
 import ProfilePage from "./pages/Profile.jsx";
 import ProblemPage from "./pages/SingleProblem.jsx";
 
@@ -28,12 +27,13 @@ export default function App() {
             <Route path="login"         element={<Login />} />
             <Route path=""         element={<LandingPage />} />
             <Route element={<AppLayout />}>
-                <Route path="home" element={<StudentHome />} />
+                {/* Problems page */}
                 <Route path="problems" element={<Problems />} />
                 <Route path="problems/:slug" element={<ProblemPage />} />
                 <Route path="courses" element={<Courses />} />
                 <Route path="submissions" element={<Submissions />} />
-                <Route path="announcements/*" element={<Announcements />} />
+                {/* Home (Announcements) page */}
+                <Route path="home/*" element={<Home />} />
                 <Route path="profile" element={
                     <ProfilePage
                         user={mockUser}

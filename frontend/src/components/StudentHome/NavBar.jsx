@@ -31,6 +31,20 @@ export default function NavBar() {
             </Anchor>
             {/* nav links */}
             <NavLink
+              to="/home"
+              style={({ isActive }) => ({
+                display: 'inline-block',
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
+                backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
+                borderRadius: rem(4),
+                padding: `${rem(4)} ${rem(8)}`,
+                textDecoration: 'none',
+              })}
+            >
+              Home
+            </NavLink>
+            <NavLink
               to="/problems"
               style={({ isActive }) => ({
                 display: 'inline-block',
@@ -71,20 +85,6 @@ export default function NavBar() {
               })}
             >
               Submissions
-            </NavLink>
-            <NavLink
-              to="/announcements"
-              style={({ isActive }) => ({
-                display: 'inline-block',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
-                backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
-                borderRadius: rem(4),
-                padding: `${rem(4)} ${rem(8)}`,
-                textDecoration: 'none',
-              })}
-            >
-              Announcements
             </NavLink>
           </Group>
 

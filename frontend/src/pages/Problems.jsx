@@ -1,12 +1,39 @@
 import React from 'react';
-import { MantineProvider, AppShell, Container, Title, Text } from '@mantine/core';
-import NavBar from '../components/StudentHome/NavBar';
+import { useFilteredProblems } from '../hooks/useFilteredProblems';
+import FilterToolbar from '../components/StudentHome/FilterToolbar';
+import ProblemsTable from '../components/StudentHome/ProblemsTable';
 
-export default function Problems() {
+export default function Problems(props) {
+  const { problems = [], tagsOptions = [] } = props;
+  const {
+    query,
+    setQuery,
+    difficulty,
+    setDifficulty,
+    status,
+    setStatus,
+    tags,
+    setTags,
+    filteredProblems,
+    clearFilters
+  } = useFilteredProblems(problems);
+
   return (
     <>
-      <Title order={2} mb="md">Problems</Title>
-      <Text>This is the Problems page.</Text>
+      <FilterToolbar
+        query={query}
+        setQuery={setQuery}
+        count={filteredProblems.length}
+        clearFilters={clearFilters}
+        difficulty={difficulty}
+        setDifficulty={setDifficulty}
+        status={status}
+        setStatus={setStatus}
+        tags={tags}
+        setTags={setTags}
+        tagsOptions={tagsOptions}
+      />
+      <ProblemsTable problems={filteredProblems} />
     </>
   );
 } 
