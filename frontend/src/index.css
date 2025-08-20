@@ -1,3 +1,6 @@
 /* KaTeX math font size overrides */
 .katex { font-size: 1em; }
 .katex-display { font-size: 1.15em; }
+
+/* CodeMirror editor font size override */
+.cm-content { font-size: 0.85em; }

@@ -112,8 +112,8 @@ function SampleInline({ samples = [] }) {
             "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
         fontSize: 14,
         lineHeight: 1.5,
-        whiteSpace: wrap ? "pre-wrap" : "pre",
-        overflowX: wrap ? "hidden" : "auto",
+        whiteSpace: "pre-wrap",
+        overflowX: "hidden",
         overflowY: "auto",
         maxHeight: 320,
         padding: 12,
@@ -213,7 +213,7 @@ $$
                 },
                 samples: [
                     {
-                        input_text: "5\n1 2 3 4 5\n7",
+                        input_text: "5\n1 2 3 5 6 6 6 6 6 6 5 5 5 5 5 5 5 5 5 5 4 5\n7",
                         output_text: "2 4\n",
                     },
                     {
@@ -285,7 +285,7 @@ $$
                 <Text c="dimmed">{problem.slug}</Text>
             </Breadcrumbs>
 
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs'>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
                 <Paper withBorder p="lg" radius="md">
                     <ScrollArea.Autosize mah={isDesktop ? 720 : 520} offsetScrollbars>
