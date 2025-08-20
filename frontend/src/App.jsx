@@ -7,7 +7,16 @@ import Problems from "./pages/Problems.jsx";
 import Courses from "./pages/Courses.jsx";
 import Submissions from "./pages/Submissions.jsx";
 import Announcements from "./pages/Announcements.jsx";
+import ProfilePage from "./pages/Profile.jsx";
 import ProblemPage from "./pages/SingleProblem.jsx";
+
+// Add mock data for ProfilePage
+const mockUser = { handle: 'john_doe', displayName: 'John Doe', avatarUrl: 'https://i.pravatar.cc/150?img=3' };
+const mockStats = { total: 123, easy: 77, medium: 35, hard: 11 };
+const mockRecentSubmissions = [
+  { id: '5', problemTitle: '3Sum', verdict: 'AC', language: 'Java', submittedAt: '2025-01-05T18:15:00Z' },
+  { id: '6', problemTitle: 'Valid Parentheses', verdict: 'AC', language: 'C++', submittedAt: '2025-01-06T19:55:00Z' },
+];
 
 export default function App() {
     return (
@@ -24,7 +33,14 @@ export default function App() {
                 <Route path="problems/:slug" element={<ProblemPage />} />
                 <Route path="courses" element={<Courses />} />
                 <Route path="submissions" element={<Submissions />} />
-                <Route path="announcements" element={<Announcements />} />
+                <Route path="announcements/*" element={<Announcements />} />
+                <Route path="profile" element={
+                    <ProfilePage
+                        user={mockUser}
+                        stats={mockStats}
+                        recentSubmissions={mockRecentSubmissions}
+                    />
+                } />
             </Route>
             {/* Catch-all (also sends anything else back to login) */}
             {/*<Route path="*" element={<Navigate to="/login" replace />} />*/}
