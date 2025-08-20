@@ -26,8 +26,6 @@ import {
     IconSend,
     IconTag,
     IconChecks,
-    IconCopy,
-    IconCheck,
     IconClock,
 } from "@tabler/icons-react";
 import ReactMarkdown from 'react-markdown';
@@ -103,8 +101,6 @@ function TagList({ tags = [] }) {
 }
 
 function SampleInline({ samples = [] }) {
-    const [wrap, setWrap] = useState(true);
-
     if (!samples.length) return <Text c="dimmed">No samples provided.</Text>;
 
     const codeBoxStyle = {
