@@ -30,62 +30,28 @@ export default function NavBar() {
               <Image src={logo} alt="CodeHustle Logo" height={48} fit="contain" />
             </Anchor>
             {/* nav links */}
-            <NavLink
-              to="/home"
-              style={({ isActive }) => ({
-                display: 'inline-block',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
-                backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
-                borderRadius: rem(4),
-                padding: `${rem(4)} ${rem(8)}`,
-                textDecoration: 'none',
-              })}
-            >
-              Home
-            </NavLink>
-            <NavLink
-              to="/problems"
-              style={({ isActive }) => ({
-                display: 'inline-block',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
-                backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
-                borderRadius: rem(4),
-                padding: `${rem(4)} ${rem(8)}`,
-                textDecoration: 'none',
-              })}
-            >
-              Problems
-            </NavLink>
-            <NavLink
-              to="/courses"
-              style={({ isActive }) => ({
-                display: 'inline-block',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
-                backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
-                borderRadius: rem(4),
-                padding: `${rem(4)} ${rem(8)}`,
-                textDecoration: 'none',
-              })}
-            >
-              Courses
-            </NavLink>
-            <NavLink
-              to="/submissions"
-              style={({ isActive }) => ({
-                display: 'inline-block',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
-                backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
-                borderRadius: rem(4),
-                padding: `${rem(4)} ${rem(8)}`,
-                textDecoration: 'none',
-              })}
-            >
-              Submissions
-            </NavLink>
+            {[
+              { label: 'Home', to: '/home' },
+              { label: 'Problems', to: '/problems' },
+              { label: 'Courses', to: '/courses' },
+            ].map(({ label, to }) => (
+              <NavLink
+                key={to}
+                to={to}
+                style={({ isActive }) => ({
+                  display: 'inline-block',
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
+                  backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
+                  borderRadius: rem(4),
+                  padding: `${rem(4)} ${rem(8)}`,
+                  textDecoration: 'none',
+                })}
+              >
+                {label}
+              </NavLink>
+            ))
+            }
           </Group>
 
           {/* right side: avatar or sign in */}

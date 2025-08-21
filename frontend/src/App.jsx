@@ -1,13 +1,13 @@
 import { Navigate, Routes, Route } from 'react-router-dom';
-import Login from "./pages/Login.jsx";
-import LandingPage from "./pages/LandingPage.jsx";
-import AppLayout from "./components/AppLayout.jsx";
-import Problems from "./pages/Problems.jsx";
-import Courses from "./pages/Courses.jsx";
-import Submissions from "./pages/Submissions.jsx";
-import Home from "./pages/Home.jsx";
-import ProfilePage from "./pages/Profile.jsx";
-import ProblemPage from "./pages/SingleProblem.jsx";
+import Login from "./pages/Login";
+import LandingPage from "./pages/LandingPage";
+import AppLayout from "./components/AppLayout";
+import Problems from "./pages/Problems";
+import Courses from "./pages/Courses";
+import Submissions from "./pages/Submissions";
+import Home from "./pages/Home";
+import ProfilePage from "./pages/Profile";
+import ProblemPage from "./pages/SingleProblem";
 
 // Add mock data for ProfilePage
 const mockUser = { handle: 'john_doe', displayName: 'John Doe', avatarUrl: 'https://i.pravatar.cc/150?img=3' };
