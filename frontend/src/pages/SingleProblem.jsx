@@ -1,4 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { useParams } from 'react-router-dom';
+import { getProblem } from '../lib/api/problems';
 import {
     Anchor,
     Badge,
@@ -67,8 +69,9 @@ function DifficultyBadge({ level }) {
     const key = (level || "").toLowerCase();
     const color = DIFF_COLOR[key] || "gray";
     const label = key ? key[0].toUpperCase() + key.slice(1) : "Unknown";
+    const textColorVar = `var(--mantine-color-${color}-6)`;
     return (
-        <Badge size="md" color={color} variant="filled" radius="sm">
+        <Badge size="md" variant="light" color="gray" radius="xl" style={{ color: textColorVar }}>
             {label}
         </Badge>
     );
@@ -94,7 +97,7 @@ function TagList({ tags = [] }) {
     return (
         <Group gap={8} wrap="wrap">
             {tags.map((t) => (
-                <Badge key={t} variant="light" leftSection={<IconTag size={14} />}>{t}</Badge>
+                <Badge key={t} variant="light" radius="xl" leftSection={<IconTag size={14} />}>{t}</Badge>
             ))}
         </Group>
     );
@@ -149,76 +152,35 @@ function SampleInline({ samples = [] }) {
     );
 }
 
-function Section({ id, title, children }) {
+function Section({ id, title, children, hideTitle = false }) {
     return (
         <Stack id={id} gap={6}>
-            <Title order={3}>{title}</Title>
-            <Divider my={2} />
+            {!hideTitle && (
+                <>
+                    <Title order={3}>{title}</Title>
+                    <Divider my={2} />
+                </>
+            )}
             <Box>{children}</Box>
         </Stack>
     );
 }
 
 export default function ProblemPage({ problem: incomingProblem, onSubmit, defaultLang }) {
+    const params = useParams();
     // Fallback demo data for local preview
+    const [fetchedProblem, setFetchedProblem] = useState(null);
+
+    useEffect(() => {
+        const slug = params?.slug;
+        if (!incomingProblem && slug) {
+            getProblem(slug).then(setFetchedProblem).catch(() => setFetchedProblem(null));
+        }
+    }, [incomingProblem, params?.slug]);
+
     const problem = useMemo(
-        () =>
-            incomingProblem || {
-                id: 1001,
-                slug: "two-sum",
-                title: "Two Sum (CodeHustle Edition)",
-                difficulty: "easy",
-                time_limit: 1,
-                memory_limit_mb: 256,
-                tags: ["array", "hash-map"],
-                solved_by_me: true,
-                acceptance_rate: 62.4,
-                statement: {
-                    overview: `## Two Sum Problem
-
-You are given an integer array $nums$ and an integer **target**. Return indices $i, j$ such that $nums[i] + nums[j] = target$.
-
-Block formula:
-$$
-nums[i] + nums[j] = target
-$$
-`,
-                    input: `
-1. **First line**: An integer $n$, the size of the array.
-2. **Second line**: $n$ space-separated integers: the elements of $nums$.
-3. **Third line**: An integer $target$.
-
-Example:
-$$
-n = 5,\\quad nums = [1,2,3,4,5],\\quad target = 7
-$$
-`,
-                    output: `
-Return two 0-indexed positions $i$ and $j$ (i < j) as an array, e.g. $[i, j]$. If multiple answers exist, you may return any.
-
-For example:
-$$
-[2, 4]
-$$
-`,
-                    constraints: [
-                        "$1 \\le n \\le 2 \\times 10^5$",
-                        "$-10^9 \\le nums[i] \\le 10^9$",
-                        "target fits in 64-bit signed",
-                    ],
-                },
-                samples: [
-                    {
-                        input_text: "5\n1 2 3 5 6 6 6 6 6 6 5 5 5 5 5 5 5 5 5 5 4 5\n7",
-                        output_text: "2 4\n",
-                    },
-                    {
-                        input_text: "6\n2 7 11 15 1 8\n9",
-                        output_text: "0 1\n",
-                    },
-                ],
-            },
-        [incomingProblem]
+        () => incomingProblem || fetchedProblem || {},
+        [incomingProblem, fetchedProblem]
     );
     // State for selected language and source code
     const [lang, setLang] = useState(defaultLang || "cpp17");
@@ -283,10 +245,10 @@ $$
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs'>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
-                <Paper withBorder p="lg" radius="md">
+                <Paper withBorder p="lg" radius="md" className="problem-content">
                     <ScrollArea.Autosize mah={isDesktop ? 720 : 520} offsetScrollbars>
                         <Stack gap="lg">
-                            {/* TITLE ROW inside LEFT column */}
+                            {/* Title visible per spec */}
                             <Group align="center" gap="sm" wrap="wrap">
                                 <Title order={1} style={{ lineHeight: 1.15 }}>{problem.title}</Title>
                             </Group>
@@ -294,7 +256,7 @@ $$
                             <Group align="center" gap="sm" wrap="nowrap" mt="xs">
                                 <DifficultyBadge level={problem.difficulty} />
                                 {problem.solved_by_me && (
-                                    <Badge leftSection={<IconChecks size={14} />} color="teal" variant="light">
+                                    <Badge leftSection={<IconChecks size={14} />} color="teal" variant="light" size="md" radius="xl">
                                         Solved
                                     </Badge>
                                 )}
@@ -326,7 +288,7 @@ $$
                             </Stack>
 
                             {/* STATEMENT SECTIONS */}
-                            <Section id="overview" title="Problem">
+                            <Section id="overview" title="Description" hideTitle>
                                 <Box style={{ fontFamily: 'Inter, sans-serif' }}>
                                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                         {problem.statement?.overview || ''}

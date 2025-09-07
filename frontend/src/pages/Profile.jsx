@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Grid } from '@mantine/core';
 import HeaderCard from '../components/Profile/HeaderCard';
 import QuickStatsCard from '../components/Profile/QuickStatsCard';
 import RecentSubmissionsCard from '../components/Profile/RecentSubmissionsCard';
+import { getMyStats, getMyRecentSubmissions } from '../lib/api/users';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * CodeHustle – Profile Page (Desktop-first)
@@ -58,7 +60,25 @@ import RecentSubmissionsCard from '../components/Profile/RecentSubmissionsCard';
  *   />
  */
 
-export default function ProfilePage({ user, stats, recentSubmissions = [] }) {
+export default function ProfilePage({ user: incomingUser, stats: incomingStats, recentSubmissions: incomingRecent = [] }) {
+    const { user: ctxUser } = useAuth();
+    const [user, setUser] = useState(incomingUser || ctxUser || {});
+    const [stats, setStats] = useState(incomingStats || {});
+    const [recentSubmissions, setRecentSubmissions] = useState(incomingRecent || []);
+
+    useEffect(() => {
+        // Update from auth context if provided
+        if (!incomingUser && ctxUser) setUser(ctxUser);
+    }, [incomingUser, ctxUser]);
+
+    useEffect(() => {
+        if (!incomingStats) {
+            getMyStats().then(setStats).catch(() => setStats({ total: 0, easy: 0, medium: 0, hard: 0 }));
+        }
+        if (!incomingRecent || !incomingRecent.length) {
+            getMyRecentSubmissions().then((res) => setRecentSubmissions(res.items || [])).catch(() => setRecentSubmissions([]));
+        }
+    }, [incomingStats, incomingRecent]);
     return (
         <Container size={1080} py="md">
             <HeaderCard user={user} />

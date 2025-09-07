@@ -17,6 +17,7 @@ import { IconBrandWindows } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useSearchParams } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
+import { login as loginApi, forgotPassword } from '../lib/api/auth';
 
 export default function Auth() {
     const [isForgotMode, setIsForgotMode] = useState(false);
@@ -43,13 +44,8 @@ export default function Auth() {
         if (isForgotMode) {
             // Forgot‐password flow
             try {
-                const res = await fetch('/api/auth/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: values.email }),
-                });
-                // if (!res.ok) throw new Error('Email not found');
-                // instead of toast, redirect back to login with flag
+                await forgotPassword(values.email);
+                // redirect back to login with flag
                 window.location.href = '/login?reset=sent';
             } catch (err) {
                 notifications.show({ title: 'Error', message: err.message, color: 'red' });
@@ -57,19 +53,14 @@ export default function Auth() {
         } else {
             // Login flow
             try {
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(values),
-                });
-                if (!res.ok) throw new Error('Invalid credentials');
-                const { token } = await res.json();
+                const { token } = await loginApi(values);
                 localStorage.setItem('authToken', token);
                 notifications.show({ title: 'Success', message: 'Logged in!' });
                 window.location.href = '/dashboard';
             } catch (err) {
-                form.setFieldError('password', err.message);
-                notifications.show({ title: 'Error', message: err.message, color: 'red' });
+                const message = err?.message || 'Invalid credentials';
+                form.setFieldError('password', message);
+                notifications.show({ title: 'Error', message, color: 'red' });
             }
         }
     };

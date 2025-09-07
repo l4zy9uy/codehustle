@@ -4,3 +4,12 @@
 
 /* CodeMirror editor font size override */
 .cm-content { font-size: 0.85em; }
+
+/* Problem page typography tweaks */
+.problem-content {
+  font-size: 0.9rem;
+}
+.problem-content h1 { font-size: 1.4rem; }
+.problem-content h2 { font-size: 1.2rem; }
+.problem-content h3 { font-size: 1.05rem; }
+.problem-content p, .problem-content li { font-size: 0.9rem; }

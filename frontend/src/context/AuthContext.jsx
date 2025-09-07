@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getMe } from '../lib/api/auth';
 
 // Create authentication context
 const AuthContext = createContext(null);
@@ -12,15 +13,9 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('authToken');
     if (token) {
       // Fetch current user profile
-      fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error('Failed to authenticate');
-          return res.json();
-        })
+      getMe()
         .then((data) => {
-          setUser(data.user || null);
+          setUser(data?.user || null);
         })
         .catch(() => {
           localStorage.removeItem('authToken');

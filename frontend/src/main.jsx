@@ -7,6 +7,13 @@ import {BrowserRouter} from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 
+// Optionally enable API mocking in dev via env flag
+if (import.meta.env.VITE_ENABLE_API_MOCKS === 'true') {
+  // Top-level await is supported by Vite
+  const { enableApiMocking } = await import('./lib/api/mock');
+  enableApiMocking();
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <MantineProvider withGlobalStyles withNormalizeCSS
                      theme={{

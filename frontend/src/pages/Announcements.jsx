@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { Text, Group, Select, Pagination, Stack } from '@mantine/core';
 import AnnouncementCard from '../components/AnnouncementCard';
 import AnnouncementDetail from '../components/AnnouncementDetail';
-import announcements from '../data/announcements';
+import { getAnnouncements, getAnnouncement } from '../lib/api/announcements';
 
 export default function AnnouncementsPage() {
     const navigate = useNavigate();
     const [sortOrder, setSortOrder] = useState('Newest');
     const [page, setPage] = useState(1);
     const itemsPerPage = 5;
-    const sortedAnnouncements = [...announcements].sort((a, b) =>
+    const [items, setItems] = useState([]);
+
+    useEffect(() => {
+      getAnnouncements().then((res) => setItems(res.items || [])).catch(() => setItems([]));
+    }, []);
+
+    const sortedAnnouncements = [...items].sort((a, b) =>
       sortOrder === 'Newest'
         ? new Date(b.date) - new Date(a.date)
         : new Date(a.date) - new Date(b.date)
@@ -52,11 +58,11 @@ export default function AnnouncementsPage() {
                                 <Text size="sm" c="dimmed">No announcements to display.</Text>
                             )}
                             <Group justify="center" mt="md">
-                                {Math.ceil(announcements.length / itemsPerPage) > 1 && (
+                                {Math.ceil(items.length / itemsPerPage) > 1 && (
                                     <Pagination
                                         page={page}
                                         onChange={setPage}
-                                        total={Math.ceil(announcements.length / itemsPerPage)}
+                                        total={Math.ceil(items.length / itemsPerPage)}
                                         size="sm"
                                     />
                                 )}
@@ -72,6 +78,11 @@ export default function AnnouncementsPage() {
 
 function AnnouncementDetailWrapper() {
     const { id } = useParams();
-    const announcement = announcements.find((a) => a.id === parseInt(id, 10));
+    const [announcement, setAnnouncement] = useState(null);
+    useEffect(() => {
+      if (!id) return;
+      getAnnouncement(id).then(setAnnouncement).catch(() => setAnnouncement(null));
+    }, [id]);
+    if (!announcement) return <Text size="sm" c="dimmed">Loading...</Text>;
     return <AnnouncementDetail announcement={announcement} />;
 }
