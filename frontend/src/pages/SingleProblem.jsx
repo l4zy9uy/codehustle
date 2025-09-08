@@ -278,7 +278,15 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
                 <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars>
+                    {/* Bleed right to align scrollbar with Paper border by offsetting p="lg" padding */}
+                    <ScrollArea
+                        style={{
+                            flex: 1,
+                            minHeight: 0,
+                            // Cancel Paper padding-right so scrollbar hugs the border
+                            marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
+                        }}
+                    >
                         <Stack gap="lg">
                             {/* Title */}
                             <Group align="center" gap="sm" wrap="wrap">
@@ -374,7 +382,15 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                 {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
                 <Box style={{ height: '100%', minHeight: 0 }}>
                     <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                        <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars>
+                        {/* Bleed right to align scrollbar with Card border by offsetting padding="lg" */}
+                        <ScrollArea
+                            style={{
+                                flex: 1,
+                                minHeight: 0,
+                                // Cancel Card padding-right so scrollbar hugs the border
+                                marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
+                            }}
+                        >
                             <Stack gap="md">
                                 <Select
                                     label="Language"
