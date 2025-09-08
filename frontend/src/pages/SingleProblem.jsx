@@ -2,10 +2,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useParams } from 'react-router-dom';
 import { getProblem } from '../lib/api/problems';
 import {
-    Anchor,
     Badge,
     Box,
-    Breadcrumbs,
     Button,
     ActionIcon,
     Card,
@@ -270,11 +268,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
             mx="auto"
             style={{ height: 'calc(100dvh - 48px - 24px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
-            {/* BREADCRUMBS */}
-            <Breadcrumbs mb="sm">
-                <Anchor href="/problems">Problems</Anchor>
-                <Text c="dimmed">{problem.slug}</Text>
-            </Breadcrumbs>
+            {/* Breadcrumbs intentionally removed to avoid hints */}
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
@@ -392,7 +386,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                 marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
                             }}
                         >
-                            <Stack gap="md">
+                            <Stack gap="md" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
                                 <Select
                                     label="Language"
                                     data={[
