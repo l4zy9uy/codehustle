@@ -372,7 +372,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                 </Paper>
 
                 {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
-                <Box style={{ height: '100%' }}>
+                <Box style={{ height: '100%', minHeight: 0 }}>
                     <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars>
                             <Stack gap="md">
