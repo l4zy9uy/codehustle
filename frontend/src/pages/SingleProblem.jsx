@@ -232,7 +232,6 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     }, [lang]);
 
     const { width } = useViewportSize();
-    const isDesktop = width >= 1024;
 
     const memLimit =
         problem.memory_limit_mb !== undefined && problem.memory_limit_mb !== null
@@ -267,6 +266,8 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     return (
         <Box
             p="md"
+            maw={1800}
+            mx="auto"
             style={{ height: 'calc(100dvh - 48px - 24px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
             {/* BREADCRUMBS */}

@@ -2,6 +2,7 @@ import { Navigate, Routes, Route } from 'react-router-dom';
 import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
 import AppLayout from "./components/AppLayout";
+import ProblemLayout from "./components/ProblemLayout";
 import Problems from "./pages/Problems";
 import Courses from "./pages/Courses";
 import Submissions from "./pages/Submissions";
@@ -28,9 +29,8 @@ export default function App() {
             <Route path="login"         element={<Login />} />
             <Route path=""         element={<LandingPage />} />
             <Route element={<AppLayout />}>
-                {/* Problems page */}
+                {/* Problems page (list) */}
                 <Route path="problems" element={<Problems />} />
-                <Route path="problems/:slug" element={<ProblemPage />} />
                 <Route path="courses" element={<Courses />} />
                 <Route path="courses/:id" element={<CourseDetail />} />
                 <Route path="submissions" element={<Submissions />} />
@@ -43,6 +43,10 @@ export default function App() {
                         recentSubmissions={mockRecentSubmissions}
                     />
                 } />
+            </Route>
+            {/* Full-bleed layout for single problem */}
+            <Route element={<ProblemLayout />}>
+                <Route path="problems/:slug" element={<ProblemPage />} />
             </Route>
             {/* Catch-all (also sends anything else back to login) */}
             {/*<Route path="*" element={<Navigate to="/login" replace />} />*/}
