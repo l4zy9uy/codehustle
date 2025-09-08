@@ -7,7 +7,9 @@ import {
     Box,
     Breadcrumbs,
     Button,
+    ActionIcon,
     Card,
+    Collapse,
     Divider,
     Group,
     List,
@@ -29,6 +31,8 @@ import {
     IconTag,
     IconChecks,
     IconClock,
+    IconChevronDown,
+    IconChevronUp,
 } from "@tabler/icons-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -100,6 +104,34 @@ function TagList({ tags = [] }) {
                 <Badge key={t} variant="light" radius="xl" leftSection={<IconTag size={14} />}>{t}</Badge>
             ))}
         </Group>
+    );
+}
+
+function ToggleTags({ problem }) {
+    const [opened, setOpened] = useState(false);
+    const hasTags = Array.isArray(problem?.tags) && problem.tags.length > 0;
+    if (!hasTags) return null;
+    return (
+        <Box>
+            <Group justify="space-between" align="center">
+                <Text size="sm" c="dimmed">Tags</Text>
+                <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="gray"
+                    onClick={() => setOpened((v) => !v)}
+                    aria-expanded={opened}
+                    aria-label="Toggle tags"
+                >
+                    {opened ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                </ActionIcon>
+            </Group>
+            <Collapse in={opened}>
+                <Box mt="xs">
+                    <TagList tags={problem.tags} />
+                </Box>
+            </Collapse>
+        </Box>
     );
 }
 
@@ -233,27 +265,27 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     }
 
     return (
-        <Box p="md">
+        <Box
+            p="md"
+            style={{ height: 'calc(100dvh - 48px - 24px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        >
             {/* BREADCRUMBS */}
             <Breadcrumbs mb="sm">
                 <Anchor href="/problems">Problems</Anchor>
-                {problem.tags?.[0] && (
-                    <Anchor href={`/problems?tag=${problem.tags[0]}`}>{problem.tags[0]}</Anchor>
-                )}
                 <Text c="dimmed">{problem.slug}</Text>
             </Breadcrumbs>
 
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs'>
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
-                <Paper withBorder p="lg" radius="md" className="problem-content">
-                    <ScrollArea.Autosize mah={isDesktop ? 720 : 520} offsetScrollbars>
+                <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars>
                         <Stack gap="lg">
-                            {/* Title visible per spec */}
+                            {/* Title */}
                             <Group align="center" gap="sm" wrap="wrap">
                                 <Title order={1} style={{ lineHeight: 1.15 }}>{problem.title}</Title>
                             </Group>
-                            {/* Difficulty and Solved badges on same line */}
-                            <Group align="center" gap="sm" wrap="nowrap" mt="xs">
+                            {/* Difficulty and solved */}
+                            <Group align="center" gap="sm" wrap="nowrap">
                                 <DifficultyBadge level={problem.difficulty} />
                                 {problem.solved_by_me && (
                                     <Badge leftSection={<IconChecks size={14} />} color="teal" variant="light" size="md" radius="xl">
@@ -261,33 +293,27 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                     </Badge>
                                 )}
                             </Group>
-
-                            {/* COMPACT META BLOCK */}
-                            <Stack gap={8}>
-                                <Group gap="lg" wrap="wrap">
-                                    <MetaRow
-                                        icon={<IconClock size={16} />}
-                                        label="Time limit"
-                                        value={timeLimit}
-                                        tooltip="Maximum time (seconds) allowed during grading"
-                                    />
-                                    <MetaRow
-                                        icon={<IconCpu size={16} />}
-                                        label="Memory limit"
-                                        value={memLimit}
-                                        tooltip="Maximum resident memory (RSS) allowed during grading"
-                                    />
-                                    <MetaRow
-                                        icon={<IconInfoCircle size={16} />}
-                                        label="Acceptance"
-                                        value={accRate}
-                                        tooltip="Acceptance rate"
-                                    />
-                                </Group>
-                                <TagList tags={problem.tags} />
-                            </Stack>
-
-                            {/* STATEMENT SECTIONS */}
+                            {/* Meta */}
+                            <Group gap="lg" wrap="wrap">
+                                <MetaRow
+                                    icon={<IconClock size={16} />}
+                                    label="Time limit"
+                                    value={timeLimit}
+                                    tooltip="Maximum time (seconds) allowed during grading"
+                                />
+                                <MetaRow
+                                    icon={<IconCpu size={16} />}
+                                    label="Memory limit"
+                                    value={memLimit}
+                                    tooltip="Maximum resident memory (RSS) allowed during grading"
+                                />
+                                <MetaRow
+                                    icon={<IconInfoCircle size={16} />}
+                                    label="Acceptance"
+                                    value={accRate}
+                                    tooltip="Acceptance rate"
+                                />
+                            </Group>
                             <Section id="overview" title="Description" hideTitle>
                                 <Box style={{ fontFamily: 'Inter, sans-serif' }}>
                                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
@@ -338,25 +364,29 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                             <Section id="samples" title="Samples">
                                 <SampleInline samples={problem.samples} />
                             </Section>
+
+                            <Divider />
+                            <ToggleTags problem={problem} />
                         </Stack>
-                    </ScrollArea.Autosize>
+                    </ScrollArea>
                 </Paper>
 
-                {/* RIGHT: SUBMIT PANEL (sticky) */}
-                <Box style={{ position: "relative" }}>
-                    <Card withBorder padding="lg" radius="md" style={{ position: "sticky", top: 16 }}>
-                        <Stack gap="md">
-                            <Select
-                                label="Language"
-                                data={[
-                                    { value: "cpp17", label: "C++17" },
-                                    { value: "java17", label: "Java 17" },
-                                    { value: "py310", label: "Python 3.10" },
-                                ]}
-                                value={lang}
-                                onChange={setLang}
-                                allowDeselect={false}
-                            />
+                {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
+                <Box style={{ height: '100%' }}>
+                    <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars>
+                            <Stack gap="md">
+                                <Select
+                                    label="Language"
+                                    data={[
+                                        { value: "cpp17", label: "C++17" },
+                                        { value: "java17", label: "Java 17" },
+                                        { value: "py310", label: "Python 3.10" },
+                                    ]}
+                                    value={lang}
+                                    onChange={setLang}
+                                    allowDeselect={false}
+                                />
                                 <CodeMirror
                                     basicSetup={lang === 'py310' ? { autocompletion: false } : true}
                                     value={source}
@@ -376,15 +406,11 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                         Submit
                                     </Button>
                                 </Group>
-                        </Stack>
+                            </Stack>
+                        </ScrollArea>
                     </Card>
                 </Box>
             </SimpleGrid>
-
-            {/* FOOTER HINTS */}
-            <Group justify="space-between" mt="lg" c="dimmed">
-                <Text size="sm">© CodeHustle</Text>
-            </Group>
         </Box>
     );
 }

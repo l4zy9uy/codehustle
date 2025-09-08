@@ -74,11 +74,17 @@ export const courseProblems = {
 // Global problems list (flatten course problems and add href/acceptanceRate default)
 export const problems = Object.values(courseProblems)
   .flat()
-  .map((p, idx) => ({ index: idx + 1, acceptanceRate: p.acceptanceRate ?? 50, ...p }));
+  .map((p, idx) => ({
+    index: idx + 1,
+    ...p,
+    acceptanceRate: p.acceptanceRate ?? 50,
+    // Synthetic solvedCount so the UI can display values.
+    // Prefer any provided value on the item, else estimate from acceptanceRate.
+    solvedCount: p.solvedCount ?? Math.round(((p.acceptanceRate ?? 50) / 100) * 5000),
+  }));
 
 export const allTags = Array.from(
   new Set(problems.flatMap((p) => (p.tags || []).map(String)))
 ).sort();
 
 export { announcements };
-

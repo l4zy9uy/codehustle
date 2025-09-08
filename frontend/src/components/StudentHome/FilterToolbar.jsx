@@ -51,7 +51,7 @@ export default function FilterToolbar({
         </Grid.Col>
         <Grid.Col span={7}>
           <Group gap="sm" wrap="nowrap">
-            <Text size="sm" fw={500}>
+            <Text size="sm">
               Difficulty:
             </Text>
             <ChipList

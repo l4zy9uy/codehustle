@@ -18,18 +18,29 @@ export const verdictColor = (v) => {
 // Clickable chip list (acts like radio group)
 export const ChipList = ({ items, value, onChange }) => (
   <Group gap={8}>
-    {items.map((it) => (
-      <Badge
-        key={it.value}
-        color={it.color}
-        variant={value === it.value ? 'filled' : 'outline'}
-        radius="xl"
-        style={{ cursor: 'pointer' }}
-        onClick={() => onChange(it.value)}
-      >
-        {it.label}
-      </Badge>
-    ))}
+    {items.map((it) => {
+      const selected = value === it.value;
+      return (
+        <Badge
+          key={it.value}
+          color={it.color}
+          variant={selected ? 'filled' : 'outline'}
+          radius="xl"
+          style={{
+            cursor: 'pointer',
+            // Use neutral/default border color for unselected state
+            borderColor: selected
+              ? undefined
+              : 'var(--mantine-color-default-border, var(--mantine-color-gray-4))',
+            fontWeight: 400,
+            textTransform: 'none',
+          }}
+          onClick={() => onChange(it.value)}
+        >
+          {it.label}
+        </Badge>
+      );
+    })}
   </Group>
 );
 
