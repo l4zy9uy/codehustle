@@ -287,7 +287,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                             marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
                         }}
                     >
-                        <Stack gap="lg">
+                        <Stack gap="lg" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
                             {/* Title */}
                             <Group align="center" gap="sm" wrap="wrap">
                                 <Title order={1} style={{ lineHeight: 1.15 }}>{problem.title}</Title>
