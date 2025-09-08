@@ -31,6 +31,9 @@ import {
     IconClock,
     IconChevronDown,
     IconChevronUp,
+    IconFileText,
+    IconCode,
+    IconListCheck,
 } from "@tabler/icons-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -67,6 +70,8 @@ const DIFF_COLOR = {
     hard: "red",
 };
 
+const PANE_HEADER_H = 40;
+
 function DifficultyBadge({ level }) {
     const key = (level || "").toLowerCase();
     const color = DIFF_COLOR[key] || "gray";
@@ -102,6 +107,25 @@ function TagList({ tags = [] }) {
                 <Badge key={t} variant="light" radius="xl" leftSection={<IconTag size={14} />}>{t}</Badge>
             ))}
         </Group>
+    );
+}
+
+function SubmissionList({ items = [] }) {
+    return (
+        <Stack gap="sm">
+            {items.length === 0 && (
+                <Text size="sm" c="dimmed">No submissions yet.</Text>
+            )}
+            {items.map((s) => (
+                <Group key={s.id} justify="space-between" wrap="nowrap" style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8, padding: 8 }}>
+                    <Group gap={8} wrap="nowrap">
+                        <Badge variant="light" color="gray" radius="sm" style={{ fontWeight: 400 }}>{s.status}</Badge>
+                        <Text size="sm" c="dimmed">{s.lang}</Text>
+                    </Group>
+                    <Text size="sm" c="dimmed">{s.when}</Text>
+                </Group>
+            ))}
+        </Stack>
     );
 }
 
@@ -215,6 +239,9 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     // State for selected language and source code
     const [lang, setLang] = useState(defaultLang || "cpp17");
     const [source, setSource] = useState("");
+    // Left pane tab & local submissions list
+    const [leftTab, setLeftTab] = useState('problem');
+    const [submissions, setSubmissions] = useState([]);
     // CodeMirror language extensions based on selected lang (only language modes)
     const extensions = useMemo(() => {
         switch (lang) {
@@ -228,8 +255,6 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                 return [];
         }
     }, [lang]);
-
-    const { width } = useViewportSize();
 
     const memLimit =
         problem.memory_limit_mb !== undefined && problem.memory_limit_mb !== null
@@ -259,6 +284,9 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
     function handleSubmit() {
         if (typeof onSubmit === "function") onSubmit({ lang, source, problem });
+        const created = { id: `local_${Date.now()}`, when: new Date().toLocaleString(), lang, status: 'PENDING' };
+        setSubmissions((prev) => [created, ...prev]);
+        setLeftTab('submissions');
     }
 
     return (
@@ -273,6 +301,42 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
                 <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    {/* Left pane header: fixed */}
+                    <Group
+                        gap="md"
+                        wrap="nowrap"
+                        align="center"
+                        style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)' }}
+                    >
+                        <Button
+                            variant="subtle"
+                            size="xs"
+                            color="gray"
+                            style={{
+                                fontWeight: 400,
+                                borderBottom: leftTab === 'problem' ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
+                                borderRadius: 0,
+                            }}
+                            onClick={() => setLeftTab('problem')}
+                            leftSection={<IconFileText size={14} />}
+                        >
+                            Problem
+                        </Button>
+                        <Button
+                            variant="subtle"
+                            size="xs"
+                            color="gray"
+                            style={{
+                                fontWeight: 400,
+                                borderBottom: leftTab === 'submissions' ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
+                                borderRadius: 0,
+                            }}
+                            onClick={() => setLeftTab('submissions')}
+                            leftSection={<IconListCheck size={14} />}
+                        >
+                            Submissions
+                        </Button>
+                    </Group>
                     {/* Bleed right to align scrollbar with Paper border by offsetting p="lg" padding */}
                     <ScrollArea
                         style={{
@@ -283,6 +347,8 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                         }}
                     >
                         <Stack gap="lg" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
+                            {leftTab === 'problem' ? (
+                            <>
                             {/* Title */}
                             <Group align="center" gap="sm" wrap="wrap">
                                 <Title order={1} style={{ lineHeight: 1.15 }}>{problem.title}</Title>
@@ -370,6 +436,10 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
                             <Divider />
                             <ToggleTags problem={problem} />
+                            </>
+                            ) : (
+                                <SubmissionList items={submissions} />
+                            )}
                         </Stack>
                     </ScrollArea>
                 </Paper>
@@ -377,6 +447,16 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                 {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
                 <Box style={{ height: '100%', minHeight: 0 }}>
                     <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        {/* Right pane header: fixed */}
+                        <Group
+                            gap="md"
+                            wrap="nowrap"
+                            align="center"
+                            style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)' }}
+                        >
+                            <IconCode size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
+                            <Text size="sm" fw={500} c="dimmed">Editor</Text>
+                        </Group>
                         {/* Bleed right to align scrollbar with Card border by offsetting padding="lg" */}
                         <ScrollArea
                             style={{
