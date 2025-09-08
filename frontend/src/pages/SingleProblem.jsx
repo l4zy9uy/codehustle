@@ -70,7 +70,20 @@ const DIFF_COLOR = {
     hard: "red",
 };
 
-const PANE_HEADER_H = 40;
+const PANE_HEADER_H = 20;
+
+function PaneHeader({ children }) {
+    return (
+        <Group
+            gap={8}
+            wrap="nowrap"
+            align="center"
+            style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)', marginTop: 4, marginBottom: 24 }}
+        >
+            {children}
+        </Group>
+    );
+}
 
 function DifficultyBadge({ level }) {
     const key = (level || "").toLowerCase();
@@ -300,39 +313,47 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
-                <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
                     {/* Left pane header: fixed */}
                     <Group
-                        gap="md"
+                        gap={8}
                         wrap="nowrap"
                         align="center"
-                        style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)' }}
+                        style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)', marginTop: 4, marginBottom: 24 }}
                     >
                         <Button
                             variant="subtle"
-                            size="xs"
+                            size="compact-xs"
                             color="gray"
                             style={{
-                                fontWeight: 400,
+                                fontWeight: 600,
+                                height: PANE_HEADER_H,
+                                paddingInline: 6,
+                                fontSize: 16,
+                                lineHeight: 1,
                                 borderBottom: leftTab === 'problem' ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
                                 borderRadius: 0,
                             }}
                             onClick={() => setLeftTab('problem')}
-                            leftSection={<IconFileText size={14} />}
+                            leftSection={<IconFileText size={16} />}
                         >
                             Problem
                         </Button>
                         <Button
                             variant="subtle"
-                            size="xs"
+                            size="compact-xs"
                             color="gray"
                             style={{
-                                fontWeight: 400,
+                                fontWeight: 600,
+                                height: PANE_HEADER_H,
+                                paddingInline: 6,
+                                fontSize: 16,
+                                lineHeight: 1,
                                 borderBottom: leftTab === 'submissions' ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
                                 borderRadius: 0,
                             }}
                             onClick={() => setLeftTab('submissions')}
-                            leftSection={<IconListCheck size={14} />}
+                            leftSection={<IconListCheck size={16} />}
                         >
                             Submissions
                         </Button>
@@ -446,17 +467,12 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
                 {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
                 <Box style={{ height: '100%', minHeight: 0 }}>
-                    <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
                         {/* Right pane header: fixed */}
-                        <Group
-                            gap="md"
-                            wrap="nowrap"
-                            align="center"
-                            style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)' }}
-                        >
+                        <PaneHeader>
                             <IconCode size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
-                            <Text size="sm" fw={500} c="dimmed">Editor</Text>
-                        </Group>
+                            <Text fw={600} c="dimmed" style={{ lineHeight: 1, fontSize: 16 }}>Editor</Text>
+                        </PaneHeader>
                         {/* Bleed right to align scrollbar with Card border by offsetting padding="lg" */}
                         <ScrollArea
                             style={{
