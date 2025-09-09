@@ -106,7 +106,8 @@ export default function LandingPage() {
                             <Title order={1} style={{ color: 'white' }}>
                                 CodeHUSTle: Ignite Your Coding Journey
                             </Title>
-                            <Text size="lg" style={{ color: 'rgba(255,255,255,.9)', marginTop: 12 }}>
+                            {/* Refactoring UI — Tokenize spacing; avoid ad-hoc values (p. 70, p. 96) */}
+                            <Text size="lg" style={{ color: 'rgba(255,255,255,.9)' }} mt="sm">
                                 Explore problems, compete in challenges, and level up your skills.
                             </Text>
                             <Group justify="center" mt="lg" gap="md">
@@ -154,7 +155,8 @@ export default function LandingPage() {
 
                     {/* ===== WHITE PAGE BELOW HERO ===== */}
                     <Box component="section" bg="white" style={{ width: '100%', zIndex: 2 }}>
-                        <Box style={{ padding: 'clamp(24px, 6vw, 56px)', maxWidth: 1200, margin: '0 auto' }}>
+                        {/* Refactoring UI — Replace clamps with clear spacing tokens (p. 70, p. 92) */}
+                        <Box p="2xl" style={{ maxWidth: 1200, margin: '0 auto' }}>
                             {/* How it works */}
                             <Title order={2} mb="md">How it works</Title>
                             <Box style={{
@@ -162,8 +164,7 @@ export default function LandingPage() {
                                 width: 72,
                                 borderRadius: 999,
                                 background: 'linear-gradient(90deg, var(--mantine-color-blue-5), var(--mantine-color-cyan-5))',
-                                marginBottom: '1.25rem'
-                            }}/>
+                            }} mb="lg"/>
                             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={{ base: 'md', sm: 'lg' }}>
                                 {steps.map((step, idx) => (
                                     <Card
@@ -204,7 +205,7 @@ export default function LandingPage() {
                             animate={{ opacity: 1 }}
                             transition={{ duration: 1 }}
                         >
-                            <Box style={{ maxWidth: 1200, margin: '0 auto', paddingInline: 'clamp(16px, 4vw, 24px)' }}>
+                            <Box style={{ maxWidth: 1200, margin: '0 auto' }} px="xl">
                                 <Text ta="center" size="sm">© {new Date().getFullYear()} CodeHUSTle</Text>
                             </Box>
                         </Box>

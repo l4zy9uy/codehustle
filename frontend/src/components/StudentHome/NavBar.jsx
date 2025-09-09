@@ -44,7 +44,8 @@ export default function NavBar() {
                   color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
                   backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
                   borderRadius: rem(4),
-                  padding: `${rem(4)} ${rem(8)}`,
+                  // Refactoring UI — Avoid ambiguous spacing, use tokens (p. 96, p. 70)
+                  padding: `${rem(theme.spacing.xs)} ${rem(theme.spacing.sm)}`,
                   textDecoration: 'none',
                 })}
               >

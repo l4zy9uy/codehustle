@@ -8,7 +8,8 @@ export default function ProblemsTable({ problems = [] }) {
     <Paper withBorder radius="sm" p="sm">
       <Divider mb="xs" />
       <ScrollArea.Autosize mah={600}>
-        <Table striped highlightOnHover withRowBorders={false} verticalSpacing="xs">
+        {/* Refactoring UI — Consistent row spacing tokens (p. 70, p. 96) */}
+        <Table striped highlightOnHover withRowBorders={false} verticalSpacing="sm">
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 56 }}>#</Table.Th>
@@ -37,7 +38,8 @@ export default function ProblemsTable({ problems = [] }) {
                 <Table.Td style={{ textAlign: 'center' }}>
                   {p.solved ? <IconCheck size={16} aria-label="Solved" title="Solved" /> : null}
                 </Table.Td>
-                <Table.Td>
+                {/* Refactoring UI — Baseline-align mixed content for readability (p. 118) */}
+                <Table.Td style={{ verticalAlign: 'baseline' }}>
                   <Anchor href={p.href}>{p.title}</Anchor>
                 </Table.Td>
                 <Table.Td>

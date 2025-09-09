@@ -9,11 +9,33 @@
   line-height: 1.5;
 }
 
-/* Problem page typography tweaks */
+/* Problem page typography tweaks (Refactoring UI: type scale p. 102, line-height p. 122) */
 .problem-content {
-  font-size: 0.9rem;
+  font-size: 1rem; /* 16px base for readability */
+  line-height: 1.6;
 }
-.problem-content h1 { font-size: 1.4rem; }
-.problem-content h2 { font-size: 1.2rem; }
-.problem-content h3 { font-size: 1.05rem; }
-.problem-content p, .problem-content li { font-size: 0.9rem; }
+.problem-content h1 {
+  font-size: 1.875rem; /* ~30px */
+  line-height: 1.2;
+  letter-spacing: -0.01em; /* tighten large headings */
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.problem-content h2 {
+  font-size: 1.5rem; /* 24px */
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+.problem-content h3 {
+  font-size: 1.25rem; /* 20px */
+  line-height: 1.3;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.problem-content p,
+.problem-content li {
+  font-size: 1rem;
+  line-height: 1.6;
+}

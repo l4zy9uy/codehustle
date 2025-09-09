@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Grid, TextInput, Group, Text, Button, MultiSelect } from '@mantine/core';
+import { Paper, Grid, TextInput, Group, Text, Button, MultiSelect, useMantineTheme } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { ChipList, DIFFICULTY_OPTIONS, STATUS_OPTIONS } from '../../utils/filters.jsx';
 
@@ -16,6 +16,13 @@ export default function FilterToolbar({
   setTags,
   tagsOptions = [],
 }) {
+  const theme = useMantineTheme();
+  const hasActiveFilters = (
+    (query && query.trim().length > 0) ||
+    (Array.isArray(difficulty) && difficulty.length > 0) ||
+    (Array.isArray(status) && status.length > 0) ||
+    (Array.isArray(tags) && tags.length > 0)
+  );
   return (
     <Paper
       withBorder
@@ -24,7 +31,8 @@ export default function FilterToolbar({
       mb="xs"
       style={{
         position: 'sticky',
-        top: '8px',
+        // Refactoring UI — Tokenize sticky offsets (p. 70, p. 92)
+        top: theme.spacing.sm,
         zIndex: 3,
         background: 'var(--mantine-color-body)',
       }}
@@ -45,7 +53,8 @@ export default function FilterToolbar({
           </Text>
         </Grid.Col>
         <Grid.Col span={2} style={{ textAlign: 'right' }}>
-          <Button variant="subtle" size="xs" onClick={clearFilters}>
+          {/* Refactoring UI — Emphasize by de-emphasizing until actionable (p. 46) */}
+          <Button variant="subtle" size="xs" onClick={clearFilters} disabled={!hasActiveFilters}>
             Clear
           </Button>
         </Grid.Col>

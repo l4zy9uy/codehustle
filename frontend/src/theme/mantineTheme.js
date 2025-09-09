@@ -22,13 +22,27 @@ const theme = {
     fontFamily: 'Inter, sans-serif',
     fontWeight: 700, // default; overridden per size below
     sizes: {
-      h1: { fontSize: 32, lineHeight: 1.2, fontWeight: 700 },
-      h2: { fontSize: 28, lineHeight: 1.2, fontWeight: 700 },
+      // Refactoring UI — Establish a clear type scale (p. 102)
+      // UI-friendly, gentle ratio for hierarchy
+      h1: { fontSize: 36, lineHeight: 1.2, fontWeight: 700, letterSpacing: '-0.01em' },
+      h2: { fontSize: 30, lineHeight: 1.2, fontWeight: 700, letterSpacing: '-0.005em' },
       h3: { fontSize: 24, lineHeight: 1.2, fontWeight: 600 },
       h4: { fontSize: 20, lineHeight: 1.2, fontWeight: 600 },
       h5: { fontSize: 18, lineHeight: 1.2, fontWeight: 600 },
       h6: { fontSize: 16, lineHeight: 1.2, fontWeight: 600 },
     },
+  },
+  // Refactoring UI — Establish a spacing system (p. 70)
+  // Tokens: 4, 8, 12, 16, 24, 32, 48, 64
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    '2xl': 32,
+    '3xl': 48,
+    '4xl': 64,
   },
   components: {
     // Defaults to reduce per-component overrides
