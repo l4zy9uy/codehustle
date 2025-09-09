@@ -6,9 +6,9 @@ import NavBar from './StudentHome/NavBar';
 
 export default function AppLayout() {
   return (
-    <AppShell header={{ height: 48 }} padding="xs">
+    <AppShell header={{ height: 48 }}>
       <NavBar />
-      <AppShell.Main>
+      <AppShell.Main mt={48+32}>
         <Container size={1440}>
           <Outlet />
         </Container>

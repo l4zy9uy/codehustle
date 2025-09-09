@@ -1,3 +1,9 @@
+/* Global CSS variables */
+:root {
+  /* Desktop header height for layouts */
+  --app-header-h: 48px;
+}
+
 /* KaTeX math font size overrides */
 .katex { font-size: 1em; }
 .katex-display { font-size: 1.15em; }

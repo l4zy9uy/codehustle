@@ -31,8 +31,8 @@ export default function FilterToolbar({
       mb="xs"
       style={{
         position: 'sticky',
-        // Refactoring UI — Tokenize sticky offsets (p. 70, p. 92)
-        top: theme.spacing.sm,
+        // Use theme spacing variable for sticky offset
+        top: 'var(--mantine-spacing-md)',
         zIndex: 3,
         background: 'var(--mantine-color-body)',
       }}
