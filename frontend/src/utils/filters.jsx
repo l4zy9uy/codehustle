@@ -32,7 +32,6 @@ export const ChipList = ({ items, value, onChange }) => (
             borderColor: selected
               ? undefined
               : 'var(--mantine-color-default-border, var(--mantine-color-gray-4))',
-            fontWeight: 400,
             textTransform: 'none',
           }}
           onClick={() => onChange(it.value)}

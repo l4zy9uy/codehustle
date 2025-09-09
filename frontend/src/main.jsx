@@ -1,4 +1,5 @@
 import {MantineProvider, Container} from '@mantine/core';
+import theme from './theme/mantineTheme';
 import ReactDOM from 'react-dom/client';
 import '@mantine/core/styles.css';
 import './index.css';
@@ -15,11 +16,7 @@ if (import.meta.env.VITE_ENABLE_API_MOCKS === 'true') {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <MantineProvider withGlobalStyles withNormalizeCSS
-                     theme={{
-                         fontFamily: 'Inter, sans-serif',    // ← apply custom font
-                         headings: {fontFamily: 'Inter, sans-serif'},
-                     }}>
+    <MantineProvider withGlobalStyles withNormalizeCSS theme={theme}>
         {/* Global notification container (only one!) */}
         <Notifications position="top-right" limit={5}/>
         <BrowserRouter>

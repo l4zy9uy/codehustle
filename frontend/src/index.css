@@ -2,8 +2,12 @@
 .katex { font-size: 1em; }
 .katex-display { font-size: 1.15em; }
 
-/* CodeMirror editor font size override */
-.cm-content { font-size: 0.85em; }
+/* CodeMirror editor typography: align with theme tokens */
+.cm-editor, .cm-content, .cm-gutters {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+}
 
 /* Problem page typography tweaks */
 .problem-content {

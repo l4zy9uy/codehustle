@@ -6,7 +6,6 @@ import {
     Box,
     Button,
     ActionIcon,
-    Card,
     Collapse,
     Divider,
     Group,
@@ -21,7 +20,6 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { useViewportSize } from "@mantine/hooks";
 import {
     IconCpu,
     IconInfoCircle,
@@ -49,13 +47,7 @@ import { python } from '@codemirror/lang-python';
 /**
  * ProblemPage.jsx — Desktop-first problem detail page for CodeHustle OJ
  * Product rules (as agreed):
- *  - No time limit shown anywhere
- *  - Only Submit (NO run-on-sample)int main() {
-  s
-  if () {
-
-  }
-}
+ *  - Only Submit (NO run-on-sample)
  *  - No Notes / No Editorial sections
  *  - Samples are rendered INLINE (no file downloads)
  *  - Tags = categories
@@ -72,6 +64,31 @@ const DIFF_COLOR = {
 
 const PANE_HEADER_H = 20;
 
+// Shared styles
+const headerButtonStyle = (active) => ({
+    fontWeight: 600,
+    height: PANE_HEADER_H,
+    paddingInline: 6,
+    fontSize: 'var(--mantine-font-size-sm)',
+    lineHeight: 1,
+    borderBottom: active ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
+    borderRadius: 0,
+});
+
+const CODE_BOX_STYLE = {
+    fontFamily: 'var(--mantine-font-family-monospace)',
+    fontSize: 'var(--mantine-font-size-sm)',
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+    overflowX: "hidden",
+    overflowY: "auto",
+    maxHeight: 320,
+    padding: 12,
+    border: "1px solid var(--mantine-color-gray-3)",
+    borderRadius: 8,
+    background: "var(--mantine-color-gray-0)",
+};
+
 function PaneHeader({ children }) {
     return (
         <Group
@@ -82,6 +99,33 @@ function PaneHeader({ children }) {
         >
             {children}
         </Group>
+    );
+}
+
+function LeftTabsHeader({ leftTab, setLeftTab }) {
+    return (
+        <PaneHeader>
+            <Button
+                variant="subtle"
+                size="compact-xs"
+                color="gray"
+                style={headerButtonStyle(leftTab === 'problem')}
+                onClick={() => setLeftTab('problem')}
+                leftSection={<IconFileText size={16} />}
+            >
+                Problem
+            </Button>
+            <Button
+                variant="subtle"
+                size="compact-xs"
+                color="gray"
+                style={headerButtonStyle(leftTab === 'submissions')}
+                onClick={() => setLeftTab('submissions')}
+                leftSection={<IconListCheck size={16} />}
+            >
+                Submissions
+            </Button>
+        </PaneHeader>
     );
 }
 
@@ -132,7 +176,7 @@ function SubmissionList({ items = [] }) {
             {items.map((s) => (
                 <Group key={s.id} justify="space-between" wrap="nowrap" style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8, padding: 8 }}>
                     <Group gap={8} wrap="nowrap">
-                        <Badge variant="light" color="gray" radius="sm" style={{ fontWeight: 400 }}>{s.status}</Badge>
+                        <Badge variant="light" color="gray" radius="sm">{s.status}</Badge>
                         <Text size="sm" c="dimmed">{s.lang}</Text>
                     </Group>
                     <Text size="sm" c="dimmed">{s.when}</Text>
@@ -173,22 +217,6 @@ function ToggleTags({ problem }) {
 function SampleInline({ samples = [] }) {
     if (!samples.length) return <Text c="dimmed">No samples provided.</Text>;
 
-    const codeBoxStyle = {
-        fontFamily:
-            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-        fontSize: 14,
-        lineHeight: 1.5,
-        whiteSpace: "pre-wrap",
-        overflowX: "hidden",
-        overflowY: "auto",
-        maxHeight: 320,
-        padding: 12,
-        border: "1px solid var(--mantine-color-gray-3)",
-        borderRadius: 8,
-        background: "var(--mantine-color-gray-0)",
-    };
-
-
     return (
         <Stack gap="lg">
             {samples.map((s, idx) => {
@@ -202,13 +230,13 @@ function SampleInline({ samples = [] }) {
                             {/* INPUT BLOCK */}
                             <Stack gap={6}>
                                 <Text c="dimmed" fw={600}>Input</Text>
-                                <CopyPre text={input} style={codeBoxStyle} />
+                                <CopyPre text={input} style={CODE_BOX_STYLE} />
                             </Stack>
 
                             {/* OUTPUT BLOCK */}
                             <Stack gap={6}>
                                 <Text c="dimmed" fw={600}>Output</Text>
-                                <CopyPre text={output} style={codeBoxStyle} />
+                                <CopyPre text={output} style={CODE_BOX_STYLE} />
                             </Stack>
                         </SimpleGrid>
 
@@ -315,49 +343,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
                 <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
                     {/* Left pane header: fixed */}
-                    <Group
-                        gap={8}
-                        wrap="nowrap"
-                        align="center"
-                        style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)', marginTop: 4, marginBottom: 24 }}
-                    >
-                        <Button
-                            variant="subtle"
-                            size="compact-xs"
-                            color="gray"
-                            style={{
-                                fontWeight: 600,
-                                height: PANE_HEADER_H,
-                                paddingInline: 6,
-                                fontSize: 16,
-                                lineHeight: 1,
-                                borderBottom: leftTab === 'problem' ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
-                                borderRadius: 0,
-                            }}
-                            onClick={() => setLeftTab('problem')}
-                            leftSection={<IconFileText size={16} />}
-                        >
-                            Problem
-                        </Button>
-                        <Button
-                            variant="subtle"
-                            size="compact-xs"
-                            color="gray"
-                            style={{
-                                fontWeight: 600,
-                                height: PANE_HEADER_H,
-                                paddingInline: 6,
-                                fontSize: 16,
-                                lineHeight: 1,
-                                borderBottom: leftTab === 'submissions' ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
-                                borderRadius: 0,
-                            }}
-                            onClick={() => setLeftTab('submissions')}
-                            leftSection={<IconListCheck size={16} />}
-                        >
-                            Submissions
-                        </Button>
-                    </Group>
+                    <LeftTabsHeader leftTab={leftTab} setLeftTab={setLeftTab} />
                     {/* Bleed right to align scrollbar with Paper border by offsetting p="lg" padding */}
                     <ScrollArea
                         style={{
@@ -467,18 +453,18 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
                 {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
                 <Box style={{ height: '100%', minHeight: 0 }}>
-                    <Card withBorder padding="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
+                    <Paper withBorder p="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
                         {/* Right pane header: fixed */}
                         <PaneHeader>
                             <IconCode size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
-                            <Text fw={600} c="dimmed" style={{ lineHeight: 1, fontSize: 16 }}>Editor</Text>
+                            <Text fw={600} c="dimmed" size="sm" style={{ lineHeight: 1 }}>Editor</Text>
                         </PaneHeader>
-                        {/* Bleed right to align scrollbar with Card border by offsetting padding="lg" */}
+                        {/* Bleed right to align scrollbar with Paper border by offsetting p="lg" */}
                         <ScrollArea
                             style={{
                                 flex: 1,
                                 minHeight: 0,
-                                // Cancel Card padding-right so scrollbar hugs the border
+                                // Cancel Paper padding-right so scrollbar hugs the border
                                 marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
                             }}
                         >
@@ -515,7 +501,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                 </Group>
                             </Stack>
                         </ScrollArea>
-                    </Card>
+                    </Paper>
                 </Box>
             </SimpleGrid>
         </Box>
