@@ -39,3 +39,23 @@
   font-size: 1rem;
   line-height: 1.6;
 }
+
+/* NavBar link affordances — Refactoring UI: spacing (p. 70), clarity (p. 96), don't rely on color alone (p. 166) */
+.app-nav-link {
+  outline: none;
+  opacity: 0.6; /* Stronger de-emphasis; still accessible (p. 46, p. 162) */
+  transition: background-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.app-nav-link:hover {
+  background: var(--mantine-color-gray-0);
+  opacity: 1;
+}
+.app-nav-link:focus-visible {
+  box-shadow: 0 0 0 2px var(--mantine-color-blue-3);
+}
+.app-nav-link.app-nav-link-active:hover {
+  background: var(--mantine-color-blue-1);
+}
+.app-nav-link.app-nav-link-active {
+  opacity: 1;
+}

@@ -24,10 +24,10 @@ export default function NavBar() {
   return (
     <AppShell.Header>
       <Container fluid px="md" style={{ height: '100%' }}>
-        <Group h="100%" align="center" justify="space-between" gap="sm" wrap="nowrap">
-          <Group align="center" gap="md" wrap="nowrap">
-            <Anchor href="/home">
-              <Image src={logo} alt="CodeHustle Logo" height={48} fit="contain" />
+        <Group h="100%" align="center" justify="space-between" gap="md" wrap="nowrap">
+          <Group align="center" gap="lg" wrap="nowrap">
+            <Anchor href="/home" underline="never" aria-label="CodeHustle home">
+              <Image src={logo} alt="CodeHustle Logo" h={theme.spacing['3xl']} fit="contain" />
             </Anchor>
             {/* nav links */}
             {[
@@ -38,15 +38,19 @@ export default function NavBar() {
               <NavLink
                 key={to}
                 to={to}
+                className={({ isActive }) => `app-nav-link${isActive ? ' app-nav-link-active' : ''}`}
                 style={({ isActive }) => ({
                   display: 'inline-block',
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? theme.colors.blue[6] : theme.colors.dark[9],
-                  backgroundColor: isActive ? theme.colors.blue[0] : 'transparent',
-                  borderRadius: rem(4),
+                  // Refactoring UI — Avoid relying on color alone; use weight + subtle bg (p. 166)
+                  color: isActive ? theme.colors.blue[7] : 'var(--mantine-color-text)',
+                  backgroundColor: isActive ? theme.colors.blue[1] : 'transparent',
+                  borderRadius: theme.radius.md,
                   // Refactoring UI — Avoid ambiguous spacing, use tokens (p. 96, p. 70)
-                  padding: `${rem(theme.spacing.xs)} ${rem(theme.spacing.sm)}`,
+                  padding: `${rem(theme.spacing.sm)} ${rem(theme.spacing.md)}`,
                   textDecoration: 'none',
+                  // Ensure active link is fully opaque even if CSS fails to match
+                  opacity: isActive ? 1 : undefined,
                 })}
               >
                 {label}
@@ -85,7 +89,21 @@ export default function NavBar() {
               </Menu.Dropdown>
             </Menu>
           ) : (
-            <Anchor href="/login">Login</Anchor>
+            <Anchor
+              href="/login"
+              underline="never"
+              className="app-nav-link"
+              style={{
+                display: 'inline-block',
+                color: 'var(--mantine-color-text)',
+                backgroundColor: 'transparent',
+                borderRadius: theme.radius.md,
+                padding: `${rem(theme.spacing.sm)} ${rem(theme.spacing.md)}`,
+                textDecoration: 'none',
+              }}
+            >
+              Login
+            </Anchor>
           )}
         </Group>
       </Container>
