@@ -22,7 +22,7 @@ export default function NavBar() {
   const navigate = useNavigate();
   const theme = useMantineTheme();
   return (
-    <AppShell.Header>
+    <AppShell.Header withBorder>
       <Container fluid px="md" style={{ height: '100%' }}>
         <Group h="100%" align="center" justify="space-between" gap="md" wrap="nowrap">
           <Group align="center" gap="lg" wrap="nowrap">
