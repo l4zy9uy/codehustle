@@ -19,6 +19,7 @@ import {
     ThemeIcon,
     Title,
     Tooltip,
+    Skeleton,
 } from "@mantine/core";
 import {
     IconCpu,
@@ -62,13 +63,13 @@ const DIFF_COLOR = {
     hard: "red",
 };
 
-const PANE_HEADER_H = 20;
+const PANE_HEADER_H = 32;
 
 // Shared styles
 const headerButtonStyle = (active) => ({
     fontWeight: 600,
     height: PANE_HEADER_H,
-    paddingInline: 6,
+    paddingInline: 8,
     fontSize: 'var(--mantine-font-size-sm)',
     lineHeight: 1,
     borderBottom: active ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
@@ -107,7 +108,7 @@ function LeftTabsHeader({ leftTab, setLeftTab }) {
         <PaneHeader>
             <Button
                 variant="subtle"
-                size="compact-xs"
+                size="xs"
                 color="gray"
                 style={headerButtonStyle(leftTab === 'problem')}
                 onClick={() => setLeftTab('problem')}
@@ -117,7 +118,7 @@ function LeftTabsHeader({ leftTab, setLeftTab }) {
             </Button>
             <Button
                 variant="subtle"
-                size="compact-xs"
+                size="xs"
                 color="gray"
                 style={headerButtonStyle(leftTab === 'submissions')}
                 onClick={() => setLeftTab('submissions')}
@@ -174,7 +175,16 @@ function SubmissionList({ items = [] }) {
                 <Text size="sm" c="dimmed">No submissions yet.</Text>
             )}
             {items.map((s) => (
-                <Group key={s.id} justify="space-between" wrap="nowrap" style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8, padding: 8 }}>
+                <Group
+                    key={s.id}
+                    justify="space-between"
+                    wrap="nowrap"
+                    style={{
+                        background: 'var(--mantine-color-gray-0)',
+                        borderRadius: 8,
+                        padding: '8px 12px',
+                    }}
+                >
                     <Group gap={8} wrap="nowrap">
                         <Badge variant="light" color="gray" radius="sm">{s.status}</Badge>
                         <Text size="sm" c="dimmed">{s.lang}</Text>
@@ -249,13 +259,8 @@ function SampleInline({ samples = [] }) {
 
 function Section({ id, title, children, hideTitle = false }) {
     return (
-        <Stack id={id} gap={6}>
-            {!hideTitle && (
-                <>
-                    <Title order={3}>{title}</Title>
-                    <Divider my={2} />
-                </>
-            )}
+        <Stack id={id} gap="sm">
+            {!hideTitle && <Title order={3}>{title}</Title>}
             <Box>{children}</Box>
         </Stack>
     );
@@ -265,11 +270,18 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     const params = useParams();
     // Fallback demo data for local preview
     const [fetchedProblem, setFetchedProblem] = useState(null);
+    const [loading, setLoading] = useState(!incomingProblem);
 
     useEffect(() => {
         const slug = params?.slug;
         if (!incomingProblem && slug) {
-            getProblem(slug).then(setFetchedProblem).catch(() => setFetchedProblem(null));
+            setLoading(true);
+            getProblem(slug)
+              .then(setFetchedProblem)
+              .catch(() => setFetchedProblem(null))
+              .finally(() => setLoading(false));
+        } else {
+            setLoading(false);
         }
     }, [incomingProblem, params?.slug]);
 
@@ -330,16 +342,23 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
         setLeftTab('submissions');
     }
 
+    const isLoading = !incomingProblem && loading;
+
     return (
         <Box
-            p="md"
             maw={1800}
             mx="auto"
-            style={{ height: 'calc(100dvh - 48px - 24px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+            style={{
+                height: '100%',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+            }}
         >
             {/* Breadcrumbs intentionally removed to avoid hints */}
 
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='xs' style={{ flex: 1, minHeight: 0 }}>
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='md' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
                 <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
                     {/* Left pane header: fixed */}
@@ -354,7 +373,23 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                         }}
                     >
                         <Stack gap="lg" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
-                            {leftTab === 'problem' ? (
+                            {isLoading ? (
+                                <>
+                                    <Skeleton height={28} width="60%" />
+                                    <Group gap="sm">
+                                        <Skeleton height={22} width={72} />
+                                        <Skeleton height={22} width={80} />
+                                    </Group>
+                                    <Group gap="lg">
+                                        <Skeleton height={18} width={120} />
+                                        <Skeleton height={18} width={120} />
+                                        <Skeleton height={18} width={120} />
+                                    </Group>
+                                    <Skeleton height={12} width="90%" />
+                                    <Skeleton height={12} width="85%" />
+                                    <Skeleton height={12} width="80%" />
+                                </>
+                            ) : leftTab === 'problem' ? (
                             <>
                             {/* Title */}
                             <Group align="center" gap="sm" wrap="wrap">
@@ -441,7 +476,6 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                 <SampleInline samples={problem.samples} />
                             </Section>
 
-                            <Divider />
                             <ToggleTags problem={problem} />
                             </>
                             ) : (
@@ -469,38 +503,55 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                             }}
                         >
                             <Stack gap="md" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
-                                <Select
-                                    label="Language"
-                                    data={[
-                                        { value: "cpp17", label: "C++17" },
-                                        { value: "java17", label: "Java 17" },
-                                        { value: "py310", label: "Python 3.10" },
-                                    ]}
-                                    value={lang}
-                                    onChange={setLang}
-                                    allowDeselect={false}
-                                />
-                                <CodeMirror
-                                    basicSetup={lang === 'py310' ? { autocompletion: false } : true}
-                                    value={source}
-                                    height="400px"
-                                    extensions={extensions}
-                                    onChange={(value) => setSource(value)}
-                                    placeholder={
-                                        lang === "cpp17"
-                                            ? "// paste or write your C++17 solution here"
-                                            : lang === "java17"
-                                                ? "// paste or write your Java 17 solution here"
-                                                : "# paste or write your Python 3.10 solution here"
-                                    }
-                                />
+                                {isLoading ? (
+                                    <>
+                                        <Skeleton height={34} width={200} />
+                                        <Skeleton height={320} />
+                                    </>
+                                ) : (
+                                    <>
+                                        <Select
+                                            label="Language"
+                                            data={[
+                                                { value: "cpp17", label: "C++17" },
+                                                { value: "java17", label: "Java 17" },
+                                                { value: "py310", label: "Python 3.10" },
+                                            ]}
+                                            value={lang}
+                                            onChange={setLang}
+                                            allowDeselect={false}
+                                        />
+                                        <CodeMirror
+                                            basicSetup={lang === 'py310' ? { autocompletion: false } : true}
+                                            value={source}
+                                            height="400px"
+                                            extensions={extensions}
+                                            onChange={(value) => setSource(value)}
+                                            placeholder={
+                                                lang === "cpp17"
+                                                    ? "// paste or write your C++17 solution here"
+                                                    : lang === "java17"
+                                                        ? "// paste or write your Java 17 solution here"
+                                                        : "# paste or write your Python 3.10 solution here"
+                                            }
+                                        />
+                                    </>
+                                )}
+                            </Stack>
+                        </ScrollArea>
+                        {/* Sticky footer: visible while editor content scrolls */}
+                        <Box style={{ borderTop: '1px solid var(--mantine-color-default-border)', padding: 'var(--mantine-spacing-sm) var(--mantine-spacing-lg)' }}>
+                            {isLoading ? (
+                                <Skeleton height={32} width={100} />
+                            ) : (
                                 <Group justify="space-between" wrap="wrap">
+                                    <Text size="xs" c="dimmed">Press Ctrl+Enter (⌘+Enter on Mac) to submit</Text>
                                     <Button leftSection={<IconSend size={16} />} onClick={handleSubmit}>
                                         Submit
                                     </Button>
                                 </Group>
-                            </Stack>
-                        </ScrollArea>
+                            )}
+                        </Box>
                     </Paper>
                 </Box>
             </SimpleGrid>
