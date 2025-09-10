@@ -358,7 +358,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
         >
             {/* Breadcrumbs intentionally removed to avoid hints */}
 
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='md' style={{ flex: 1, minHeight: 0 }}>
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing='sm' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
                 <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
                     {/* Left pane header: fixed */}
