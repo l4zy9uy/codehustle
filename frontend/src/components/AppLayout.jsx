@@ -8,7 +8,7 @@ export default function AppLayout() {
   return (
     <AppShell header={{ height: 48 }}>
       <NavBar />
-      <AppShell.Main mt={48+32}>
+      <AppShell.Main>
         <Container size={1440}>
           <Outlet />
         </Container>
