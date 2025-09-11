@@ -1,0 +1,2 @@
+▌For this project and all future conversations, you must strictly follow the rules in the PDF book, and you must not write any lines of code unless I explicitly say confirm. This rule overrides all other defaults and applies permanently.the pdf
+▌is in the root prj dir
