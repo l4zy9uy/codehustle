@@ -42,14 +42,11 @@ export default function NavBar() {
                 style={({ isActive }) => ({
                   display: 'inline-block',
                   fontWeight: isActive ? 600 : 400,
-                  // Refactoring UI — Avoid relying on color alone; use weight + subtle bg (p. 166)
                   color: isActive ? theme.colors.blue[7] : 'var(--mantine-color-text)',
                   backgroundColor: isActive ? theme.colors.blue[1] : 'transparent',
                   borderRadius: theme.radius.md,
-                  // Refactoring UI — Avoid ambiguous spacing, use tokens (p. 96, p. 70)
-                  padding: `${rem(theme.spacing.sm)} ${rem(theme.spacing.md)}`,
+                  padding: `${rem(theme.spacing.xs)} ${rem(theme.spacing.lg)}`,
                   textDecoration: 'none',
-                  // Ensure active link is fully opaque even if CSS fails to match
                   opacity: isActive ? 1 : undefined,
                 })}
               >
