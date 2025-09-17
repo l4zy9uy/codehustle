@@ -63,17 +63,19 @@ const DIFF_COLOR = {
     hard: "red",
 };
 
-const PANE_HEADER_H = 32;
+const PANE_HEADER_H = 24;
+const LANG_LABEL_VALUE = '__lang_label__';
 
 // Shared styles
 const headerButtonStyle = (active) => ({
-    fontWeight: 600,
+    fontWeight: active ? 600 : 200,
     height: PANE_HEADER_H,
     paddingInline: 8,
     fontSize: 'var(--mantine-font-size-sm)',
     lineHeight: 1,
-    borderBottom: active ? '2px solid var(--mantine-color-gray-6)' : '2px solid transparent',
-    borderRadius: 0,
+    borderBottom: 0,
+    borderRadius: 4,
+    color: active ? 'var(--mantine-color-gray-9)' : 'var(--mantine-color-dimmed)',
 });
 
 const CODE_BOX_STYLE = {
@@ -93,39 +95,66 @@ const CODE_BOX_STYLE = {
 function PaneHeader({ children }) {
     return (
         <Group
-            gap={8}
+            gap={4}
             wrap="nowrap"
             align="center"
-            style={{ height: PANE_HEADER_H, borderBottom: '1px solid var(--mantine-color-default-border)', marginTop: 4, marginBottom: 24 }}
+            style={{ height: PANE_HEADER_H, borderBottom: 0, marginTop: 0}}
         >
             {children}
         </Group>
     );
 }
 
+// Minimal extraction: TabButton for header buttons
+function TabButton({ active, onClick, leftSection, children }) {
+    return (
+        <Button
+            variant="subtle"
+            size="xs"
+            color="gray"
+            radius="xs"
+            styles={{
+                label: {
+                    fontWeight: active ? 600 : 200,
+                    color: active ? 'var(--mantine-color-gray-9)' : 'var(--mantine-color-dimmed)'
+                }
+            }}
+            style={headerButtonStyle(active)}
+            onClick={onClick}
+            leftSection={leftSection}
+        >
+            {children}
+        </Button>
+    );
+}
+
+// Minimal extraction: Header bar wrapper with gray background and 4px padding
+function PaneHeaderBar({ children }) {
+    return (
+        <Box style={{ padding: 4, background: 'var(--mantine-color-gray-0)' }}>
+            {children}
+        </Box>
+    );
+}
+
 function LeftTabsHeader({ leftTab, setLeftTab }) {
     return (
         <PaneHeader>
-            <Button
-                variant="subtle"
-                size="xs"
-                color="gray"
-                style={headerButtonStyle(leftTab === 'problem')}
+            <TabButton
+                active={leftTab === 'problem'}
                 onClick={() => setLeftTab('problem')}
                 leftSection={<IconFileText size={16} />}
             >
                 Problem
-            </Button>
-            <Button
-                variant="subtle"
-                size="xs"
-                color="gray"
-                style={headerButtonStyle(leftTab === 'submissions')}
+            </TabButton>
+            <Divider orientation="vertical" style={{ height: 18, alignSelf: 'center' }} />
+            <TabButton
+                active={leftTab === 'submissions'}
                 onClick={() => setLeftTab('submissions')}
                 leftSection={<IconListCheck size={16} />}
             >
                 Submissions
-            </Button>
+            </TabButton>
         </PaneHeader>
     );
 }
@@ -266,6 +295,20 @@ function Section({ id, title, children, hideTitle = false }) {
     );
 }
 
+// Local markdown render components to normalize spacing without global CSS
+const mdComponents = {
+    p: ({ node, ...props }) => <p style={{ margin: '0 0 6px 0' }} {...props} />,
+    ul: ({ node, ...props }) => <ul style={{ margin: '4px 0 6px', paddingLeft: '1.25rem' }} {...props} />,
+    ol: ({ node, ...props }) => <ol style={{ margin: '4px 0 6px', paddingLeft: '1.25rem' }} {...props} />,
+    h1: ({ node, ...props }) => <h1 style={{ margin: '8px 0 6px' }} {...props} />,
+    h2: ({ node, ...props }) => <h2 style={{ margin: '8px 0 6px' }} {...props} />,
+    h3: ({ node, ...props }) => <h3 style={{ margin: '6px 0 4px' }} {...props} />,
+    h4: ({ node, ...props }) => <h4 style={{ margin: '6px 0 4px' }} {...props} />,
+    h5: ({ node, ...props }) => <h5 style={{ margin: '6px 0 4px' }} {...props} />,
+    h6: ({ node, ...props }) => <h6 style={{ margin: '6px 0 4px' }} {...props} />,
+    li: ({ node, ...props }) => <li style={{ marginBottom: 4 }} {...props} />,
+};
+
 export default function ProblemPage({ problem: incomingProblem, onSubmit, defaultLang }) {
     const params = useParams();
     // Fallback demo data for local preview
@@ -290,7 +333,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
         [incomingProblem, fetchedProblem]
     );
     // State for selected language and source code
-    const [lang, setLang] = useState(defaultLang || "cpp17");
+    const [lang, setLang] = useState(defaultLang ?? null);
     const [source, setSource] = useState("");
     // Left pane tab & local submissions list
     const [leftTab, setLeftTab] = useState('problem');
@@ -360,19 +403,21 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing='sm' style={{ flex: 1, minHeight: 0 }}>
                 {/* LEFT: TITLE + META + STATEMENT (all metadata lives here) */}
-                <Paper withBorder p="lg" radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
-                    {/* Left pane header: fixed */}
-                    <LeftTabsHeader leftTab={leftTab} setLeftTab={setLeftTab} />
-                    {/* Bleed right to align scrollbar with Paper border by offsetting p="lg" padding */}
+                <Paper withBorder p={0} radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    {/* Left pane header: fixed, isolated from content padding */}
+                    <PaneHeaderBar>
+                        <LeftTabsHeader leftTab={leftTab} setLeftTab={setLeftTab} />
+                    </PaneHeaderBar>
+                    {/* Bleed right to align scrollbar with Paper border by offsetting content padding */}
                     <ScrollArea
                         style={{
                             flex: 1,
                             minHeight: 0,
                             // Cancel Paper padding-right so scrollbar hugs the border
-                            marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
+                            marginRight: 'calc(-1 * var(--mantine-spacing-lg) + 16)',
                         }}
                     >
-                        <Stack gap="lg" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
+                        <Stack gap="lg" style={{ padding: 'var(--mantine-spacing-lg)', paddingRight: 'var(--mantine-spacing-lg)' }}>
                             {isLoading ? (
                                 <>
                                     <Skeleton height={28} width="60%" />
@@ -426,35 +471,42 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                 />
                             </Group>
                             <Section id="overview" title="Description" hideTitle>
-                                <Box style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                         {problem.statement?.overview || ''}
                                     </ReactMarkdown>
                                 </Box>
                             </Section>
 
                             <Section id="input" title="Input">
-                                <Box style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                         {problem.statement?.input || ''}
                                     </ReactMarkdown>
                                 </Box>
                             </Section>
 
                             <Section id="output" title="Output">
-                                <Box style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                         {problem.statement?.output || ''}
                                     </ReactMarkdown>
                                 </Box>
                             </Section>
 
                             <Section id="constraints" title="Constraints">
-                                <List spacing="xs" withPadding>
+                                <List
+                                    className="markdown"
+                                    spacing={1}
+                                    styles={{
+                                        root: { marginTop: 4, marginBottom: 0, padding: 0 },
+                                        item: { paddingTop: 0, paddingBottom: 0, marginBottom: 4 }
+                                    }}
+                                >
                                     {Array.isArray(problem.statement?.constraints)
                                         ? problem.statement.constraints.map((c, i) => (
                                             <List.Item key={i}>
-                                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                                     {c}
                                                 </ReactMarkdown>
                                             </List.Item>
@@ -464,7 +516,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                             .filter(Boolean)
                                             .map((c, i) => (
                                                 <List.Item key={i}>
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                                         {c.trim()}
                                                     </ReactMarkdown>
                                                 </List.Item>
@@ -487,22 +539,24 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
                 {/* RIGHT: SUBMIT PANEL (fixed-height, internal scroll) */}
                 <Box style={{ height: '100%', minHeight: 0 }}>
-                    <Paper withBorder p="lg" radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 0 }}>
-                        {/* Right pane header: fixed */}
-                        <PaneHeader>
-                            <IconCode size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
-                            <Text fw={600} c="dimmed" size="sm" style={{ lineHeight: 1 }}>Editor</Text>
-                        </PaneHeader>
+                    <Paper withBorder p={0} radius="md" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        {/* Right pane header: fixed, isolated from content padding */}
+                        <PaneHeaderBar>
+                            <PaneHeader>
+                                <IconCode size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
+                                <Text fw={600} c="dimmed" size="sm" style={{ lineHeight: 1 }}>Editor</Text>
+                            </PaneHeader>
+                        </PaneHeaderBar>
                         {/* Bleed right to align scrollbar with Paper border by offsetting p="lg" */}
                         <ScrollArea
                             style={{
                                 flex: 1,
                                 minHeight: 0,
                                 // Cancel Paper padding-right so scrollbar hugs the border
-                                marginRight: 'calc(-1 * var(--mantine-spacing-lg))',
+                                marginRight: 'calc(-1 * var(--mantine-spacing-lg) + 16)',
                             }}
                         >
-                            <Stack gap="md" style={{ paddingRight: 'var(--mantine-spacing-lg)' }}>
+                            <Stack gap="md" style={{ padding: 'var(--mantine-spacing-lg)', paddingRight: 'var(--mantine-spacing-lg)' }}>
                                 {isLoading ? (
                                     <>
                                         <Skeleton height={34} width={200} />
@@ -511,15 +565,18 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                 ) : (
                                     <>
                                         <Select
-                                            label="Language"
                                             data={[
+                                                { value: LANG_LABEL_VALUE, label: "Language", disabled: true },
                                                 { value: "cpp17", label: "C++17" },
                                                 { value: "java17", label: "Java 17" },
                                                 { value: "py310", label: "Python 3.10" },
                                             ]}
-                                            value={lang}
-                                            onChange={setLang}
+                                            value={lang ?? LANG_LABEL_VALUE}
+                                            onChange={(v) => { if (v && v !== LANG_LABEL_VALUE) setLang(v); }}
                                             allowDeselect={false}
+                                            size="xs"
+                                            radius={8}
+                                            style={{ width: 120 }}
                                         />
                                         <CodeMirror
                                             basicSetup={lang === 'py310' ? { autocompletion: false } : true}
@@ -528,11 +585,13 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                             extensions={extensions}
                                             onChange={(value) => setSource(value)}
                                             placeholder={
-                                                lang === "cpp17"
-                                                    ? "// paste or write your C++17 solution here"
-                                                    : lang === "java17"
-                                                        ? "// paste or write your Java 17 solution here"
-                                                        : "# paste or write your Python 3.10 solution here"
+                                                !lang
+                                                    ? "// choose a language from the dropdown to enable syntax highlighting"
+                                                    : lang === "cpp17"
+                                                        ? "// paste or write your C++17 solution here"
+                                                        : lang === "java17"
+                                                            ? "// paste or write your Java 17 solution here"
+                                                            : "# paste or write your Python 3.10 solution here"
                                             }
                                         />
                                     </>

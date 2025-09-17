@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Flex, TextInput, Group, Text, Button, MultiSelect } from '@mantine/core';
+import { Paper, Flex, TextInput, Group, Text, Button, MultiSelect, Select } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { ChipList, DIFFICULTY_OPTIONS, STATUS_OPTIONS } from '../../utils/filters.jsx';
 
@@ -16,6 +16,20 @@ export default function FilterToolbar({
   setTags,
   tagsOptions = [],
 }) {
+  const DIFF_LABEL_VALUE = '__diff_label__';
+  const STATUS_LABEL_VALUE = '__status_label__';
+
+  const difficultyData = [
+    { value: DIFF_LABEL_VALUE, label: 'Difficulty', disabled: true },
+    ...DIFFICULTY_OPTIONS.map(o => ({ value: o.value, label: o.label }))
+  ];
+  const statusData = [
+    { value: STATUS_LABEL_VALUE, label: 'Status', disabled: true },
+    ...STATUS_OPTIONS.map(o => ({ value: o.value, label: o.label }))
+  ];
+  const tagsCompactStyle = (Array.isArray(tags) && tags.length > 2)
+    ? { flex: 1, minWidth: 160 }
+    : { width: 160, flex: '0 0 auto' };
   const hasActiveFilters = (
     (typeof query === 'string' && query.trim().length > 0) ||
     (typeof difficulty === 'string' && difficulty !== 'all') ||
@@ -47,16 +61,6 @@ export default function FilterToolbar({
             radius="xl"
             style={{ width: '240px' }}
           />
-          <MultiSelect
-            data={tagsOptions}
-            placeholder="Tags…"
-            searchable
-            clearable
-            radius="xl"
-            style={{ width: '120px' }}
-            value={tags}
-            onChange={setTags}
-          />
         </Group>
 
         {/* Right cluster: results count + clear button */}
@@ -70,16 +74,38 @@ export default function FilterToolbar({
           </Button>
         </Group>
 
-        {/* Second row: chips (wrap, compact) */}
-        <Group gap="sm" wrap="wrap" w="100%">
-          <Group gap="sm">
-            <Text size="sm">Difficulty</Text>
-            <ChipList items={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
-          </Group>
-          <Group gap="sm">
-            <Text size="sm" fw={500}>Status</Text>
-            <ChipList items={STATUS_OPTIONS} value={status} onChange={setStatus} />
-          </Group>
+        {/* Second row: compact filters (wrap, compact) */}
+        <Group gap="sm" wrap="wrap" w="100%" style={{ alignItems: 'center' }}>
+          <Select
+            data={difficultyData}
+            value={difficulty === 'all' ? DIFF_LABEL_VALUE : difficulty}
+            onChange={(v) => { if (v && v !== DIFF_LABEL_VALUE) setDifficulty(v); }}
+            allowDeselect={false}
+            size="xs"
+            radius={8}
+            style={{ width: 120, flex: '0 0 auto' }}
+          />
+          <Select
+            data={statusData}
+            value={status === 'all' ? STATUS_LABEL_VALUE : status}
+            onChange={(v) => { if (v && v !== STATUS_LABEL_VALUE) setStatus(v); }}
+            allowDeselect={false}
+            size="xs"
+            radius={8}
+            style={{ width: 120, flex: '0 0 auto' }}
+          />
+          <MultiSelect
+            data={tagsOptions}
+            placeholder="Tags"
+            searchable
+            clearable
+            size="xs"
+            radius={8}
+            style={{ width: 'auto', minWidth: 160, maxWidth: 'calc(100% - 280px)' }}
+            value={tags}
+            onChange={setTags}
+            styles={{ inputField: { display: (Array.isArray(tags) && tags.length > 0) ? 'none' : undefined }, pillsList: { gap: 4 } }}
+          />
         </Group>
       </Flex>
     </Paper>

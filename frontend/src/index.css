@@ -14,6 +14,10 @@
   font-size: var(--mantine-font-size-sm);
   line-height: 1.5;
 }
+/* Make editor line-number gutter background white */
+.cm-gutters {
+  background: #ffffff !important;
+}
 
 /* Problem page typography tweaks (Refactoring UI: type scale p. 102, line-height p. 122) */
 .problem-content {
