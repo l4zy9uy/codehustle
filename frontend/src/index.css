@@ -64,4 +64,6 @@
 }
 .app-nav-link.app-nav-link-active {
   opacity: 1;
+  /* Add vertical breathing room for active pill */
+  margin-block: var(--mantine-spacing-xs);
 }

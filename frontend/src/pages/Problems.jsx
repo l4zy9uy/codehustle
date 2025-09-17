@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Container } from '@mantine/core';
 import { useFilteredProblems } from '../hooks/useFilteredProblems';
 import FilterToolbar from '../components/StudentHome/FilterToolbar';
 import ProblemsTable from '../components/StudentHome/ProblemsTable';
@@ -31,7 +32,7 @@ export default function Problems(props) {
   } = useFilteredProblems(problems);
 
   return (
-    <>
+    <Container maw={1024} mx="auto">
       <FilterToolbar
         query={query}
         setQuery={setQuery}
@@ -46,6 +47,6 @@ export default function Problems(props) {
         tagsOptions={tagsOptions}
       />
       <ProblemsTable problems={filteredProblems} />
-    </>
+    </Container>
   );
 }
