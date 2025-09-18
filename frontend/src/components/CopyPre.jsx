@@ -1,6 +1,5 @@
 import React from "react";
 import {Box, ActionIcon, Tooltip, SimpleGrid, Grid, CopyButton} from "@mantine/core";
-import {useClipboard} from "@mantine/hooks";
 import {IconCopy, IconCheck} from "@tabler/icons-react";
 
 /**
@@ -15,14 +14,14 @@ export default function CopyPre({text, style}) {
             <Grid.Col span={10.6}>
                 {text || '(empty)'}
             </Grid.Col>
-            <Grid.Col span={1.4}>
-                <CopyButton value={text || ''} timeout={1500}>
+            <Grid.Col span={1.4} style={{position: 'relative'}}>
+                <CopyButton  value={text || ''} timeout={1500} sx={{position: 'relative'}}>
                     {({copied, copy}) => (
                         <ActionIcon
                             color={copied ? 'teal' : 'gray'}
                             onClick={copy}
                             size="xs"
-                            sx={{position: 'absolute', top: 8, right: 8}}
+                            style={{ position: 'absolute', top: 4, right: 4 }}
                         >
                             {copied ? <IconCheck size={14}/> : <IconCopy size={14}/>}
                         </ActionIcon>
