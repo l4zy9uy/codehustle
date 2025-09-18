@@ -11,10 +11,10 @@ import {IconCopy, IconCheck} from "@tabler/icons-react";
 export default function CopyPre({text, style}) {
     return (
         <Grid style={style} cols={2}>
-            <Grid.Col span={10.6}>
+            <Grid.Col span={11}>
                 {text || '(empty)'}
             </Grid.Col>
-            <Grid.Col span={1.4} style={{position: 'relative'}}>
+            <Grid.Col span={1} style={{position: 'relative'}}>
                 <CopyButton  value={text || ''} timeout={1500} sx={{position: 'relative'}}>
                     {({copied, copy}) => (
                         <ActionIcon
