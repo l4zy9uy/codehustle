@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { getProblem } from '../lib/api/problems';
 import {
     Badge,
@@ -20,6 +20,8 @@ import {
     Title,
     Tooltip,
     Skeleton,
+    Loader,
+    Table,
 } from "@mantine/core";
 import {
     IconCpu,
@@ -33,12 +35,17 @@ import {
     IconFileText,
     IconCode,
     IconListCheck,
+    IconCopy,
 } from "@tabler/icons-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import CopyPre from "../components/CopyPre";
+// Externalized submission components/hooks
+import SubmissionRowExt from "../components/ProblemDetail/SubmissionRow";
+import SubmissionDetailExt from "../components/ProblemDetail/SubmissionDetail";
+import useSubmissionExpansionExt from "../components/ProblemDetail/useSubmissionExpansion";
 import CodeMirror from '@uiw/react-codemirror';
 import { cpp } from '@codemirror/lang-cpp';
 import { java } from '@codemirror/lang-java';
@@ -91,6 +98,27 @@ const CODE_BOX_STYLE = {
     borderRadius: 8,
     background: "var(--mantine-color-gray-0)",
 };
+
+// Shared constants for submission detail/diffs
+const MAX_CODE_H = 240;
+const CODE_PREVIEW_BOX = {
+    border: '1px solid var(--mantine-color-default-border)',
+    borderRadius: 8,
+    maxHeight: MAX_CODE_H,
+    overflow: 'auto',
+    fontFamily: 'var(--mantine-font-family-monospace)',
+    fontSize: 'var(--mantine-font-size-sm)',
+    padding: 8,
+    background: 'var(--mantine-color-gray-0)'
+};
+const CODE_BLOCK_BOX = {
+    border: '1px solid var(--mantine-color-default-border)',
+    borderRadius: 8,
+    padding: 8,
+    background: 'var(--mantine-color-gray-0)'
+};
+const DIFF_HL_LEFT = 'rgba(255, 59, 48, 0.12)';
+const DIFF_HL_RIGHT = 'rgba(46, 160, 67, 0.12)';
 
 function PaneHeader({ children }) {
     return (
@@ -197,30 +225,274 @@ function TagList({ tags = [] }) {
     );
 }
 
-function SubmissionList({ items = [] }) {
+// Status-specific small components
+function StatusAC() {
+    return <Text size="sm" c="teal">Accepted</Text>;
+}
+function StatusTLE() {
+    return <Text size="sm" c="dimmed">Time Limit Exceeded</Text>;
+}
+function StatusPending() {
+    return (
+        <Group gap={8} align="center">
+            <Loader size="xs" />
+            <Text size="sm" c="dimmed">Judging…</Text>
+        </Group>
+    );
+}
+function StatusCE({ s, showMoreMap, setShowMoreMap, truncate }) {
+    return (
+        <Stack gap={6}>
+            <Text size="sm" fw={600}>Compiler output</Text>
+            <Box style={CODE_BLOCK_BOX}>
+                <CopyPre text={truncate(String(s.compileLog || ''), showMoreMap[s.id + '_ce'] ? 4000 : 500)} style={{ margin: 0 }} showCopy={false} />
+            </Box>
+            <Group justify="flex-end">
+                <Button size="xs" variant="subtle" color="gray" onClick={() => setShowMoreMap((m) => ({ ...m, [s.id + '_ce']: !m[s.id + '_ce'] }))}>{showMoreMap[s.id + '_ce'] ? 'Show less' : 'Show more'}</Button>
+            </Group>
+        </Stack>
+    );
+}
+function StatusRTE({ s, showMoreMap, setShowMoreMap, truncate }) {
+    return (
+        <Stack gap={6}>
+            <Text size="sm" fw={600}>Runtime error</Text>
+            <Box style={CODE_BLOCK_BOX}>
+                <CopyPre text={truncate(String(s.runtimeError || ''), showMoreMap[s.id + '_re'] ? 4000 : 500)} style={{ margin: 0 }} showCopy={false} />
+            </Box>
+            <Group justify="flex-end">
+                <Button size="xs" variant="subtle" color="gray" onClick={() => setShowMoreMap((m) => ({ ...m, [s.id + '_re']: !m[s.id + '_re'] }))}>{showMoreMap[s.id + '_re'] ? 'Show less' : 'Show more'}</Button>
+            </Group>
+        </Stack>
+    );
+}
+
+// DiffCase: side-by-side failed case renderer with truncation and input collapse
+function DiffCase({ fc, showMoreMap, setShowMoreMap, openInputMap, setOpenInputMap, truncate }) {
+    const showAll = !!showMoreMap[fc.id];
+    const yourText = showAll ? fc.your : truncate(fc.your, 256);
+    const expectedText = showAll ? fc.expected : truncate(fc.expected, 256);
+    const inputOpen = !!openInputMap[fc.id];
+    return (
+        <Stack key={fc.id} gap={6}>
+            <Group justify="space-between" align="center">
+                <Text size="sm" c="dimmed">{fc.summary}</Text>
+                <Button size="xs" variant="subtle" color="gray" leftSection={inputOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />} onClick={() => setOpenInputMap((m) => ({ ...m, [fc.id]: !m[fc.id] }))}>Input</Button>
+            </Group>
+            <Collapse in={inputOpen}>
+                <Box style={CODE_BLOCK_BOX}>
+                    <CopyPre text={fc.input} style={{ margin: 0 }} showCopy={true} />
+                </Box>
+            </Collapse>
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
+                <Stack gap={4}>
+                    <Text size="xs" c="dimmed">Your Output</Text>
+                    <Box style={CODE_BLOCK_BOX}>
+                        {yourText.split('\n').map((line, idx) => (
+                            <div key={idx} style={{ background: (fc.diffLines?.left || []).includes(idx) ? DIFF_HL_LEFT : 'transparent', fontFamily: 'var(--mantine-font-family-monospace)' }}>{line}</div>
+                        ))}
+                    </Box>
+                </Stack>
+                <Stack gap={4}>
+                    <Text size="xs" c="dimmed">Expected Output</Text>
+                    <Box style={CODE_BLOCK_BOX}>
+                        {expectedText.split('\n').map((line, idx) => (
+                            <div key={idx} style={{ background: (fc.diffLines?.right || []).includes(idx) ? DIFF_HL_RIGHT : 'transparent', fontFamily: 'var(--mantine-font-family-monospace)' }}>{line}</div>
+                        ))}
+                    </Box>
+                </Stack>
+            </SimpleGrid>
+            <Group justify="flex-end">
+                <Button size="xs" variant="subtle" color="gray" onClick={() => setShowMoreMap((m) => ({ ...m, [fc.id]: !m[fc.id] }))}>{showAll ? 'Show less' : 'Show more'}</Button>
+            </Group>
+        </Stack>
+    );
+}
+
+function StatusWA({ s, showMoreMap, setShowMoreMap, openInputMap, setOpenInputMap, truncate }) {
+    const cases = (s.failedCases && s.failedCases.length ? s.failedCases : [
+        { id: 'mock1', summary: 'Mismatch at line 3', input: '3\n1 2 3', your: '6\n1 2', expected: '6\n1 2 3', diffLines: { left: [1], right: [1] } },
+    ]);
+    return (
+        <Stack gap={8}>
+            <Text size="sm" fw={600}>Failed cases</Text>
+            {cases.map((fc) => (
+                <DiffCase
+                    key={fc.id}
+                    fc={fc}
+                    showMoreMap={showMoreMap}
+                    setShowMoreMap={setShowMoreMap}
+                    openInputMap={openInputMap}
+                    setOpenInputMap={setOpenInputMap}
+                    truncate={truncate}
+                />
+            ))}
+        </Stack>
+    );
+}
+
+// Helper components for submission list
+function SubmissionRow({ submission, onClick, children }) {
+    return (
+        <Stack key={submission.id} gap={6}>
+            <Group
+                justify="space-between"
+                wrap="nowrap"
+                onClick={onClick}
+                style={{
+                    background: 'var(--mantine-color-gray-0)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                }}
+            >
+                <Group gap={8} wrap="nowrap">
+                    <Badge variant="light" color="gray" radius="sm">{submission.status}</Badge>
+                    <Text size="sm" c="dimmed">{submission.lang}</Text>
+                </Group>
+                <Text size="sm" c="dimmed">{submission.when}</Text>
+            </Group>
+            {children}
+        </Stack>
+    );
+}
+
+function SubmissionDetail({ s, loading, showMoreMap, setShowMoreMap, openInputMap, setOpenInputMap, truncate }) {
+    return (
+        <Paper withBorder radius="md" p="sm" style={{ background: 'var(--mantine-color-body)' }}>
+            {loading ? (
+                <Group gap={8} align="center">
+                    <Loader size="sm" />
+                    <Text size="sm" c="dimmed">Loading details…</Text>
+                </Group>
+            ) : (
+                <Stack gap={12}>
+                    <Group justify="space-between" align="center">
+                        <Text size="sm" fw={600}>Source code</Text>
+                        <Button size="xs" variant="light" leftSection={<IconCopy size={14} />} onClick={() => navigator.clipboard.writeText(String(s.source || ''))}>Copy code</Button>
+                    </Group>
+                    <Box style={CODE_PREVIEW_BOX}>
+                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{String(s.source || '').slice(0, 8000)}</pre>
+                    </Box>
+
+                    {/* Status-specific detail */}
+                    {s.status === 'AC' && (<StatusAC />)}
+                    {s.status === 'TLE' && (<StatusTLE />)}
+                    {s.status === 'PENDING' && (<StatusPending />)}
+                    {s.status === 'CE' && (
+                        <StatusCE s={s} showMoreMap={showMoreMap} setShowMoreMap={setShowMoreMap} truncate={truncate} />
+                    )}
+                    {s.status === 'RTE' && (
+                        <StatusRTE s={s} showMoreMap={showMoreMap} setShowMoreMap={setShowMoreMap} truncate={truncate} />
+                    )}
+                    {s.status === 'WA' && (
+                        <StatusWA s={s} showMoreMap={showMoreMap} setShowMoreMap={setShowMoreMap} openInputMap={openInputMap} setOpenInputMap={setOpenInputMap} truncate={truncate} />
+                    )}
+                </Stack>
+            )}
+        </Paper>
+    );
+}
+
+// Hook to manage submission expansion state, URL sync, and helpers
+function useSubmissionExpansion() {
+    const [expandedId, setExpandedId] = useState(null);
+    const [loadingMap, setLoadingMap] = useState({});
+    const [showMoreMap, setShowMoreMap] = useState({});
+    const [openInputMap, setOpenInputMap] = useState({});
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (!searchParams || typeof searchParams.get !== 'function') return;
+        const sid = searchParams.get('sid');
+        if (sid) setExpandedId(sid);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    function syncUrl(nextId) {
+        try {
+            const url = new URL(window.location.href);
+            if (nextId) url.searchParams.set('sid', nextId); else url.searchParams.delete('sid');
+            window.history.replaceState({}, '', url.toString());
+        } catch {}
+    }
+
+    function toggleExpand(submission) {
+        const willExpand = expandedId !== submission.id;
+        const nextId = willExpand ? submission.id : null;
+        setExpandedId(nextId);
+        syncUrl(nextId);
+        if (willExpand) {
+            setLoadingMap((m) => ({ ...m, [submission.id]: true }));
+            setTimeout(() => setLoadingMap((m) => ({ ...m, [submission.id]: false })), 300);
+        }
+    }
+
+    function truncate(text, limit) {
+        if (!text) return '';
+        if (text.length <= limit) return text;
+        return text.slice(0, limit) + '\n…';
+    }
+
+    return {
+        expandedId,
+        setExpandedId,
+        loadingMap,
+        setLoadingMap,
+        showMoreMap,
+        setShowMoreMap,
+        openInputMap,
+        setOpenInputMap,
+        toggleExpand,
+        truncate,
+    };
+}
+
+function SubmissionList({ items = [], expandedId: _unusedExpandedId, onToggleExpand: _unusedOnToggle }) {
+    const {
+        expandedId,
+        loadingMap,
+        showMoreMap,
+        setShowMoreMap,
+        openInputMap,
+        setOpenInputMap,
+        toggleExpand,
+        truncate,
+    } = useSubmissionExpansionExt();
+
     return (
         <Stack gap="sm">
             {items.length === 0 && (
                 <Text size="sm" c="dimmed">No submissions yet.</Text>
             )}
-            {items.map((s) => (
-                <Group
-                    key={s.id}
-                    justify="space-between"
-                    wrap="nowrap"
-                    style={{
-                        background: 'var(--mantine-color-gray-0)',
-                        borderRadius: 8,
-                        padding: '8px 12px',
-                    }}
-                >
-                    <Group gap={8} wrap="nowrap">
-                        <Badge variant="light" color="gray" radius="sm">{s.status}</Badge>
-                        <Text size="sm" c="dimmed">{s.lang}</Text>
-                    </Group>
-                    <Text size="sm" c="dimmed">{s.when}</Text>
-                </Group>
-            ))}
+            {items.length > 0 && (
+                <Table>
+                    <Table.Thead>
+                        <Table.Tr>
+                            <Table.Th style={{paddingLeft: 12}}>Status</Table.Th>
+                            <Table.Th  style={{paddingLeft: 12}}>Language</Table.Th>
+                            <Table.Th  style={{paddingLeft: 12}}>Time</Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {items.map((s, idx) => (
+                            <SubmissionRowExt submission={s} onClick={() => toggleExpand(s)} key={s.id} index={idx}>
+                                {expandedId === s.id && (
+                                    <SubmissionDetailExt
+                                        s={s}
+                                        loading={!!loadingMap[s.id]}
+                                        showMoreMap={showMoreMap}
+                                        setShowMoreMap={setShowMoreMap}
+                                        openInputMap={openInputMap}
+                                        setOpenInputMap={setOpenInputMap}
+                                        truncate={truncate}
+                                    />
+                                )}
+                            </SubmissionRowExt>
+                        ))}
+                    </Table.Tbody>
+                </Table>
+            )}
         </Stack>
     );
 }
@@ -311,9 +583,12 @@ const mdComponents = {
 
 export default function ProblemPage({ problem: incomingProblem, onSubmit, defaultLang }) {
     const params = useParams();
+    // For deep-linking expanded submission
+    const [searchParams] = useSearchParams();
     // Fallback demo data for local preview
     const [fetchedProblem, setFetchedProblem] = useState(null);
     const [loading, setLoading] = useState(!incomingProblem);
+    const [expandedSubmissionId, setExpandedSubmissionId] = useState(null);
 
     useEffect(() => {
         const slug = params?.slug;
@@ -327,6 +602,14 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
             setLoading(false);
         }
     }, [incomingProblem, params?.slug]);
+
+    // Initialize expanded submission from URL (?sid=...)
+    useEffect(() => {
+        if (!searchParams || typeof searchParams.get !== 'function') return;
+        const sid = searchParams.get('sid');
+        if (sid) setExpandedSubmissionId(sid);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const problem = useMemo(
         () => incomingProblem || fetchedProblem || {},
@@ -380,10 +663,57 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
 
     function handleSubmit() {
         if (typeof onSubmit === "function") onSubmit({ lang, source, problem });
-        const created = { id: `local_${Date.now()}`, when: new Date().toLocaleString(), lang, status: 'PENDING' };
+        const created = { id: `local_${Date.now()}`, when: new Date().toLocaleString(), lang, status: 'PENDING', source };
         setSubmissions((prev) => [created, ...prev]);
         setLeftTab('submissions');
     }
+
+    // Seed mock submissions for demo when empty
+    useEffect(() => {
+        if (Array.isArray(submissions) && submissions.length > 0) return;
+        const now = new Date();
+        const fmt = (d) => d.toLocaleString();
+        const mocks = [
+            {
+                id: 'sub_ac_1', status: 'AC', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 60 * 2)),
+                source: '#include <bits/stdc++.h>\nusing namespace std;\nint main(){ios::sync_with_stdio(false);cin.tie(nullptr);int n; if(!(cin>>n)) return 0; long long s=0; for(int i=0;i<n;i++){int x;cin>>x; s+=x;} cout<<s<<"\n";}',
+                summary: 'Accepted',
+            },
+            {
+                id: 'sub_wa_1', status: 'WA', lang: 'py310', when: fmt(new Date(now.getTime() - 1000 * 60 * 5)),
+                source: 'n=int(input())\narr=list(map(int,input().split()))\nprint(sum(arr[:-1]))\n',
+                summary: 'Wrong Answer on hidden tests',
+                failedCases: [
+                    { id: 'c1', summary: 'Mismatch at line 2', input: '3\n1 2 3', your: '6\n1 2', expected: '6\n1 2 3', diffLines: { left: [1], right: [1] } },
+                    { id: 'c2', summary: 'Missing last number', input: '2\n10 20', your: '30', expected: '30\n20', diffLines: { left: [], right: [0] } },
+                ],
+            },
+            {
+                id: 'sub_ce_1', status: 'CE', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 60 * 9)),
+                source: '#include <iostream>\nint main(){ std::cout<<x; }',
+                summary: 'Compilation failed',
+                compileLog: 'main.cpp:1: error: ‘x’ was not declared in this scope\n   std::cout << x;\n                 ^',
+            },
+            {
+                id: 'sub_rte_1', status: 'RTE', lang: 'java17', when: fmt(new Date(now.getTime() - 1000 * 60 * 12)),
+                source: 'class Main{public static void main(String[]a){int[]x=new int[1];System.out.println(x[2]);}}',
+                summary: 'Runtime error',
+                runtimeError: 'Exception in thread "main" java.lang.ArrayIndexOutOfBoundsException: Index 2 out of bounds for length 1\n\tat Main.main(Main.java:1)',
+            },
+            {
+                id: 'sub_tle_1', status: 'TLE', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 60 * 20)),
+                source: 'while(true){}',
+                summary: 'Time Limit Exceeded',
+            },
+            {
+                id: 'sub_pending_1', status: 'PENDING', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 30)),
+                source: 'int main(){}',
+                summary: 'Judging…',
+            },
+        ];
+        setSubmissions(mocks);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const isLoading = !incomingProblem && loading;
 
@@ -531,7 +861,11 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                             <ToggleTags problem={problem} />
                             </>
                             ) : (
-                                <SubmissionList items={submissions} />
+                                <SubmissionList
+                                    items={submissions}
+                                    expandedId={expandedSubmissionId}
+                                    onToggleExpand={setExpandedSubmissionId}
+                                />
                             )}
                         </Stack>
                     </ScrollArea>
