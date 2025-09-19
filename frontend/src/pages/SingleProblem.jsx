@@ -469,9 +469,9 @@ function SubmissionList({ items = [], expandedId: _unusedExpandedId, onToggleExp
                 <Table>
                     <Table.Thead>
                         <Table.Tr>
-                            <Table.Th style={{paddingLeft: 12}}>Status</Table.Th>
-                            <Table.Th  style={{paddingLeft: 12}}>Language</Table.Th>
-                            <Table.Th  style={{paddingLeft: 12}}>Time</Table.Th>
+                            <Table.Th style={{ width: "40%", paddingLeft: 12 }}>Status</Table.Th>
+                            <Table.Th style={{ width: "35%", paddingLeft: 12 }}>Language</Table.Th>
+                            <Table.Th style={{ width: "25%", paddingLeft: 12 }}>Time</Table.Th>
                         </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
