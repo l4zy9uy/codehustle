@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"codehustle/backend/internal/config"
+	"codehustle/backend/internal/constants"
 	"codehustle/backend/internal/db"
 	"codehustle/backend/internal/models"
 )
@@ -73,10 +74,15 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// Assign default "student" role (role_id = 1)
-	if err := db.DB.Exec("INSERT INTO user_roles (user_id, role_id) VALUES (?, 1) ON DUPLICATE KEY UPDATE user_id=user_id", user.ID).Error; err != nil {
-		log.Printf("[AUTH] Failed to assign default student role to user %s: %v", user.ID, err)
-		// Don't fail registration if role assignment fails, but log it
+	// Assign default student role
+	var roleID int
+	if err := db.DB.Raw("SELECT id FROM roles WHERE name = ?", constants.RoleStudent).Scan(&roleID).Error; err != nil {
+		log.Printf("[AUTH] Failed to find student role: %v", err)
+	} else {
+		if err := db.DB.Exec("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id=user_id", user.ID, roleID).Error; err != nil {
+			log.Printf("[AUTH] Failed to assign default student role to user %s: %v", user.ID, err)
+			// Don't fail registration if role assignment fails, but log it
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"id": user.ID})

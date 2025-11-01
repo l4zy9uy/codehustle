@@ -35,6 +35,12 @@ var defaults = map[string]string{
 
 	// Piston (executor)
 	"PISTON_URL": "http://127.0.0.1:3002",
+
+	// OAuth
+	"GOOGLE_CLIENT_ID":     "",
+	"GOOGLE_CLIENT_SECRET": "",
+	"GOOGLE_REDIRECT_URI":  "http://localhost:8081/api/v1/auth/google/callback",
+	"FRONTEND_URL":         "http://localhost:3000",
 }
 
 // LoadEnv loads environment variables from .env files

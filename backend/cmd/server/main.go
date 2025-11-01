@@ -13,6 +13,7 @@ import (
 	"codehustle/backend/internal/db"
 	"codehustle/backend/internal/middleware"
 	"codehustle/backend/internal/routes"
+	"codehustle/backend/internal/storage"
 )
 
 func main() {
@@ -27,6 +28,11 @@ func main() {
 	// Run SQL migrations
 	if err := db.Migrate(); err != nil {
 		panic(fmt.Sprintf("database migration failed: %v", err))
+	}
+
+	// Initialize MinIO
+	if err := storage.InitMinIO(); err != nil {
+		panic(fmt.Sprintf("failed to initialize MinIO: %v", err))
 	}
 
 	r := gin.Default()

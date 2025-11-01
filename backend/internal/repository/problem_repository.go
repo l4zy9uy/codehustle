@@ -1,16 +1,18 @@
 package repository
 
 import (
+	"fmt"
+	"time"
+
 	"codehustle/backend/internal/db"
 	"codehustle/backend/internal/models"
 	"codehustle/backend/internal/utils"
-	"fmt"
 )
 
 // ListProblems returns all problems (optionally filtered by is_public)
 func ListProblems(isPublicOnly bool) ([]models.Problem, error) {
 	var problems []models.Problem
-	query := db.DB.Model(&models.Problem{})
+	query := db.DB.Model(&models.Problem{}).Where("deleted_at IS NULL")
 
 	if isPublicOnly {
 		query = query.Where("is_public = ?", 1)
@@ -23,9 +25,7 @@ func ListProblems(isPublicOnly bool) ([]models.Problem, error) {
 // GetProblem retrieves a problem by ID or slug
 func GetProblem(identifier string) (*models.Problem, error) {
 	var problem models.Problem
-	// Try to find by slug first (slugs are typically shorter and don't contain hyphens like UUIDs)
-	// If not found, try by ID
-	err := db.DB.Where("slug = ? OR id = ?", identifier, identifier).First(&problem).Error
+	err := db.DB.Where("(slug = ? OR id = ?) AND deleted_at IS NULL", identifier, identifier).First(&problem).Error
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func CreateProblem(p *models.Problem) error {
 		counter := 1
 		for {
 			var existing models.Problem
-			err := db.DB.Where("slug = ?", p.Slug).First(&existing).Error
+			err := db.DB.Where("slug = ? AND deleted_at IS NULL", p.Slug).First(&existing).Error
 			if err != nil {
 				// Slug doesn't exist, we can use it
 				break
@@ -60,4 +60,41 @@ func CreateProblem(p *models.Problem) error {
 	}
 
 	return db.DB.Create(p).Error
+}
+
+// UpdateProblem updates an existing problem
+func UpdateProblem(p *models.Problem) error {
+	// Generate slug from title if slug is being updated and is empty
+	if p.Slug == "" && p.Title != "" {
+		p.Slug = utils.GenerateSlug(p.Title)
+
+		// Ensure uniqueness (excluding current problem)
+		baseSlug := p.Slug
+		counter := 1
+		for {
+			var existing models.Problem
+			err := db.DB.Where("slug = ? AND id != ? AND deleted_at IS NULL", p.Slug, p.ID).First(&existing).Error
+			if err != nil {
+				// Slug doesn't exist or is the same problem, we can use it
+				break
+			}
+			// Slug exists for another problem, try with a number suffix
+			p.Slug = fmt.Sprintf("%s-%d", baseSlug, counter)
+			counter++
+
+			if counter > 1000 {
+				return fmt.Errorf("failed to generate unique slug for problem: %s", p.Title)
+			}
+		}
+	}
+
+	return db.DB.Model(p).Updates(p).Error
+}
+
+// DeleteProblem performs a soft delete on a problem
+func DeleteProblem(problemID string) error {
+	now := time.Now()
+	return db.DB.Model(&models.Problem{}).
+		Where("id = ?", problemID).
+		Update("deleted_at", now).Error
 }

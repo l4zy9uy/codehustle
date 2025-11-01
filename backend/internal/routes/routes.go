@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
+	"codehustle/backend/internal/constants"
 	"codehustle/backend/internal/handlers"
 	"codehustle/backend/internal/middleware"
 )
@@ -14,22 +15,26 @@ func RegisterRoutes(r *gin.Engine) {
 	// Public endpoints (no auth required)
 	api.POST("/register", handlers.RegisterUser)
 	api.POST("/login", handlers.Login)
+	api.GET("/auth/google", handlers.GoogleLogin)
+	api.GET("/auth/google/callback", handlers.GoogleCallback)
 
 	// Protected endpoints (require auth)
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
 
 	// Course routes
-	protected.GET("/courses", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListCourses)
+	protected.GET("/courses", middleware.RequireRole(constants.StudentRoles...), handlers.ListCourses)
 
 	// Assignment routes
-	protected.GET("/assignments", middleware.RequireRole("lecturer", "admin"), handlers.ListAssignments)
+	protected.GET("/assignments", middleware.RequireRole(constants.InstructorRoles...), handlers.ListAssignments)
 
 	// Submission routes
-	protected.GET("/submissions", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListSubmissions)
+	protected.GET("/submissions", middleware.RequireRole(constants.StudentRoles...), handlers.ListSubmissions)
 
 	// Problem routes
-	protected.GET("/problems", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListProblems)
-	protected.GET("/problems/:id", middleware.RequireRole("student", "lecturer", "admin"), handlers.GetProblem)
-	protected.POST("/problems", middleware.RequireRole("admin", "lecturer"), handlers.CreateProblem)
+	protected.GET("/problems", middleware.RequireRole(constants.StudentRoles...), handlers.ListProblems)
+	protected.GET("/problems/:id", middleware.RequireRole(constants.StudentRoles...), handlers.GetProblem)
+	protected.POST("/problems", middleware.RequireRole(constants.InstructorRoles...), handlers.CreateProblem)
+	protected.PUT("/problems/:id", middleware.RequireRole(constants.InstructorRoles...), handlers.UpdateProblem)
+	protected.DELETE("/problems/:id", middleware.RequireRole(constants.InstructorRoles...), handlers.DeleteProblem)
 }
