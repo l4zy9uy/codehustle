@@ -34,8 +34,10 @@ export default function AuthLayout({ children }) {
                 justify="center"
                 flex={4}
                 h="100%"          // ensure child spans full parent height
-                bg="red.1"        // debug background
                 p="md"
+                style={{
+                    backgroundImage: 'linear-gradient(to top, #e6e9f0 0%, #eef1f5 100%)',
+                }}
             >
                 <Box>
                     {children}

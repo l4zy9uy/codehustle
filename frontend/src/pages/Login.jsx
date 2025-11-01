@@ -13,7 +13,7 @@ import {
     Text,
     Alert,
 } from '@mantine/core';
-import { IconBrandWindows } from '@tabler/icons-react';
+import { IconBrandGoogle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useSearchParams } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
@@ -67,7 +67,7 @@ export default function Auth() {
 
     return (
         <AuthLayout>
-            <Stack spacing="xl" sx={{ width: 360 }}>
+            <Stack spacing="xl" style={{ width: 480, marginLeft: '16px', marginRight: '16px' }}>
                 {/* Inline alert for reset-success */}
                 {resetSent && (
                     <Alert title="Success" color="green" variant="filled">
@@ -79,22 +79,24 @@ export default function Auth() {
                     {isForgotMode ? 'Forgot Your Password?' : 'Login to continue'}
                 </Title>
 
-                <form onSubmit={form.onSubmit(handleSubmit)}>
+                <form onSubmit={form.onSubmit(handleSubmit)} >
                     <TextInput
-                        label={isForgotMode ? 'Username or Email' : 'Email'}
-                        placeholder="you@uni.edu"
+                        placeholder={isForgotMode ? 'Enter your username or email' : 'Enter your email address'}
                         required
                         mb="sm"
+                        radius="md"
+                        sx={{ width: "1480px" }}
                         {...form.getInputProps('email')}
                     />
 
                     {!isForgotMode && (
                         <>
                             <PasswordInput
-                                label="Password"
-                                placeholder="Your password"
+                                placeholder="Enter your password"
                                 required
                                 mb="sm"
+                                radius="md"
+                                sx={{ width: '100%' }}
                                 {...form.getInputProps('password')}
                             />
 
@@ -135,10 +137,10 @@ export default function Auth() {
                             <Button
                                 variant="outline"
                                 fullWidth
-                                leftSection={<IconBrandWindows size={20} />}
-                                onClick={() => (window.location.href = '/api/auth/office365')}
+                                leftSection={<IconBrandGoogle size={20} />}
+                                onClick={() => (window.location.href = '/api/auth/google')}
                             >
-                                Office 365
+                                Google
                             </Button>
                         </>
                     )}
