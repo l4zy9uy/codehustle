@@ -1,0 +1,33 @@
+services:
+  piston-init:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: piston_init
+    privileged: true
+    restart: "no"
+    working_dir: /piston
+    volumes:
+      - ./piston-data:/piston:rw
+    command: >
+      sh -lc "(wget -qO- https://raw.githubusercontent.com/engineer-man/piston/master/scripts/ppman-install.sh | sh) || true; \
+      (ppman update || true); \
+      (ppman search cpp || true); \
+      (ppman install 'c++/17' || ppman install 'cpp/17' || true); \
+      (ppman list || true)"
+
+  piston_api:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: piston_api
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "3002:2000"
+    working_dir: /piston
+    volumes:
+      - ./piston-data:/piston:rw
+    depends_on:
+      piston-init:
+        condition: service_completed_successfully
+
+networks: {}
+
+

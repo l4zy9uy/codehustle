@@ -23,6 +23,8 @@ export function AuthProvider({ children }) {
         })
         .finally(() => setLoading(false));
     } else {
+            // Mock: default admin when no token to demo edit flows
+      setUser({ id: 'mock-admin', name: 'Admin User', role: 'admin', email: 'admin@example.com' });
       setLoading(false);
     }
   }, []);

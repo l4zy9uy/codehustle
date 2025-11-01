@@ -10,6 +10,8 @@ import Home from "./pages/Home";
 import ProfilePage from "./pages/Profile";
 import ProblemPage from "./pages/SingleProblem";
 import CourseDetail from "./pages/CourseDetail";
+import ProblemEditor from "./pages/admin/problems/ProblemEditor";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 // Add mock data for ProfilePage
 const mockUser = { handle: 'john_doe', displayName: 'John Doe', avatarUrl: 'https://i.pravatar.cc/150?img=3' };
@@ -36,6 +38,9 @@ export default function App() {
                 <Route path="submissions" element={<Submissions />} />
                 {/* Home (Announcements) page */}
                 <Route path="home/*" element={<Home />} />
+                <Route path="problems/new" element={<ProblemEditor />} />
+                <Route path="problems/:id/edit" element={<ProblemEditor />} />
+                <Route path="admin/settings" element={<AdminSettings />} />
                 <Route path="profile" element={
                     <ProfilePage
                         user={mockUser}

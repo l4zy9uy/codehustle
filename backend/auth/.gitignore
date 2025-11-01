@@ -1,9 +1,0 @@
-bin/
-vendor/
-.env
-*.exe
-*.dll
-*.so
-*.dylib
-*.test
-*.out 

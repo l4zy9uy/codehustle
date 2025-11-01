@@ -4,6 +4,7 @@
 import announcements from '../../data/announcements';
 
 export const mockUser = {
+  role: "admin", // "admin", "editor", "student"
   id: 'u_1',
   email: 'mock@example.com',
   name: 'Mock User',

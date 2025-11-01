@@ -14,4 +14,67 @@ services:
     command: tunnel run --token ${TUNNEL_TOKEN}
     networks: [web]
 
+  mysql:
+    image: mysql:8.0
+    container_name: codehustle-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-codehustle}
+      MYSQL_USER: ${DB_USER:-app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-apppass}
+    ports:
+      - "2412:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --sql-mode="STRICT_TRANS_TABLES"
+
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: codehustle-piston
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "3002:2000"
+    networks: [web]
+    volumes:
+      - ./piston-data:/piston
+
+  minio:
+    image: minio/minio:latest
+    container_name: codehustle-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks: [web]
+
+  redis:
+    image: redis:7-alpine
+    container_name: codehustle-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [web]
+
 networks: { web: {} }
+
+volumes:
+  mysql_data:
+  minio_data:
+  piston_data:
+  redis_data:
