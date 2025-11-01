@@ -1,13 +1,17 @@
 package middleware
 
 import (
-	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
+
+	"codehustle/backend/internal/config"
 )
 
-// UserContext holds the authenticated user info from auth service
+// UserContext holds the authenticated user info from JWT token
 type UserContext struct {
 	ID    string   `json:"id"`
 	Email string   `json:"email"`
@@ -31,7 +35,7 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-// AuthMiddleware validates JWT tokens by proxying to the external auth service
+// AuthMiddleware validates JWT tokens directly
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -40,30 +44,86 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Proxy the /me request to the auth service
-		req, err := http.NewRequest("GET", "http://localhost:8080/api/v1/me", nil)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "auth_proxy_error"})
+		// Extract token from "Bearer <token>"
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			log.Printf("[AUTH] Invalid token format: %s", authHeader)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_token_format"})
 			return
 		}
-		req.Header.Set("Authorization", authHeader)
+		tokenString := parts[1]
 
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil || resp.StatusCode != http.StatusOK {
+		// Parse and validate token
+		secret := config.Get("JWT_SECRET")
+		if secret == "" {
+			log.Printf("[AUTH] ERROR: JWT_SECRET is not configured")
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error":   "jwt_secret_not_configured",
+				"message": "JWT_SECRET environment variable is not set",
+			})
+			return
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrSignatureInvalid
+			}
+			return []byte(secret), nil
+		})
+
+		if err != nil {
+			log.Printf("[AUTH] Token validation failed: %v", err)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error":   "invalid_token",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if !token.Valid {
+			log.Printf("[AUTH] Token is not valid")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_token"})
 			return
 		}
-		defer resp.Body.Close()
 
-		var userCtx UserContext
-		if err := json.NewDecoder(resp.Body).Decode(&userCtx); err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_user_response"})
+		// Extract claims
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			log.Printf("[AUTH] Invalid token claims format")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_token_claims"})
 			return
 		}
+
+		// Build user context from claims
+		userCtx := UserContext{
+			ID:    getStringClaim(claims, "sub"),
+			Email: getStringClaim(claims, "email"),
+		}
+
+		// Extract roles (handle null/empty)
+		if roles, ok := claims["roles"].([]interface{}); ok {
+			userCtx.Roles = make([]string, 0, len(roles))
+			for _, r := range roles {
+				if role, ok := r.(string); ok {
+					userCtx.Roles = append(userCtx.Roles, role)
+				}
+			}
+		}
+
+		log.Printf("[AUTH] Authenticated user: %s (%s)", userCtx.Email, userCtx.ID)
 		// Store user context for downstream handlers
 		c.Set("user", userCtx)
 		c.Next()
 	}
+}
+
+func getStringClaim(claims jwt.MapClaims, key string) string {
+	if val, ok := claims[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
 }
 
 // RequireRole checks that the user has one of the allowed roles

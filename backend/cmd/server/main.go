@@ -34,10 +34,7 @@ func main() {
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
-	// Authentication middleware (delegates to auth service)
-	r.Use(middleware.AuthMiddleware())
-
-	// Register API routes
+	// Register API routes (auth middleware is applied per route group)
 	routes.RegisterRoutes(r)
 
 	// Swagger endpoint

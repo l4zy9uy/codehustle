@@ -11,6 +11,9 @@ var defaults = map[string]string{
 	"ENV":  "development",
 	"PORT": "8081",
 
+	// JWT
+	"JWT_SECRET": "your-secret-key-change-in-production",
+
 	// Database
 	"DB_DIALECT":  "mysql",
 	"DB_HOST":     "127.0.0.1",

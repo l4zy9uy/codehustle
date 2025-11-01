@@ -11,12 +11,20 @@ import (
 func RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
 
+	// Public endpoints (no auth required)
+	api.POST("/register", handlers.RegisterUser)
+	api.POST("/login", handlers.Login)
+
+	// Protected endpoints (require auth)
+	protected := api.Group("")
+	protected.Use(middleware.AuthMiddleware())
+
 	// Course routes
-	api.GET("/courses", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListCourses)
+	protected.GET("/courses", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListCourses)
 
 	// Assignment routes
-	api.GET("/assignments", middleware.RequireRole("lecturer", "admin"), handlers.ListAssignments)
+	protected.GET("/assignments", middleware.RequireRole("lecturer", "admin"), handlers.ListAssignments)
 
 	// Submission routes
-	api.GET("/submissions", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListSubmissions)
+	protected.GET("/submissions", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListSubmissions)
 }
