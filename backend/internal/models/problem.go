@@ -6,6 +6,7 @@ import "time"
 type Problem struct {
 	ID            string    `gorm:"type:char(36);primaryKey" json:"id"`
 	Title         string    `gorm:"size:200;not null" json:"title"`
+	Slug          string    `gorm:"size:120;uniqueIndex;column:slug" json:"slug"`
 	StatementPath string    `gorm:"type:text;not null;column:statement_path" json:"statement_path"`
 	Difficulty    string    `gorm:"size:50" json:"difficulty,omitempty"`
 	IsPublic      bool      `gorm:"column:is_public" json:"is_public"`

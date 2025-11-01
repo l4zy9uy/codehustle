@@ -31,4 +31,5 @@ func RegisterRoutes(r *gin.Engine) {
 	// Problem routes
 	protected.GET("/problems", middleware.RequireRole("student", "lecturer", "admin"), handlers.ListProblems)
 	protected.GET("/problems/:id", middleware.RequireRole("student", "lecturer", "admin"), handlers.GetProblem)
+	protected.POST("/problems", middleware.RequireRole("admin", "lecturer"), handlers.CreateProblem)
 }
