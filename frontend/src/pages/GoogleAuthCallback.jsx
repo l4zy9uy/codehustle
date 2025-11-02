@@ -3,6 +3,8 @@ import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { Box, Loader, Text } from '@mantine/core';
+import { STORAGE_KEYS } from '../constants';
+import { getApiUrl } from '../env';
 
 export default function GoogleAuthCallback() {
     const [searchParams] = useSearchParams();
@@ -14,15 +16,15 @@ export default function GoogleAuthCallback() {
         const error = searchParams.get('error');
 
         // Get stored PKCE parameters from sessionStorage
-        const storedCodeVerifier = sessionStorage.getItem('google_code_verifier');
-        const storedState = sessionStorage.getItem('google_state');
-        const storedNonce = sessionStorage.getItem('google_nonce');
+        const storedCodeVerifier = sessionStorage.getItem(STORAGE_KEYS.GOOGLE_CODE_VERIFIER);
+        const storedState = sessionStorage.getItem(STORAGE_KEYS.GOOGLE_STATE);
+        const storedNonce = sessionStorage.getItem(STORAGE_KEYS.GOOGLE_NONCE);
 
         if (error) {
             // Clean up sessionStorage
-            sessionStorage.removeItem('google_code_verifier');
-            sessionStorage.removeItem('google_state');
-            sessionStorage.removeItem('google_nonce');
+            sessionStorage.removeItem(STORAGE_KEYS.GOOGLE_CODE_VERIFIER);
+            sessionStorage.removeItem(STORAGE_KEYS.GOOGLE_STATE);
+            sessionStorage.removeItem(STORAGE_KEYS.GOOGLE_NONCE);
             
             notifications.show({
                 title: 'Authentication Failed',
@@ -47,9 +49,9 @@ export default function GoogleAuthCallback() {
         // Verify state matches (CSRF protection)
         if (state !== storedState) {
             // Clean up sessionStorage
-            sessionStorage.removeItem('google_code_verifier');
-            sessionStorage.removeItem('google_state');
-            sessionStorage.removeItem('google_nonce');
+            sessionStorage.removeItem(STORAGE_KEYS.GOOGLE_CODE_VERIFIER);
+            sessionStorage.removeItem(STORAGE_KEYS.GOOGLE_STATE);
+            sessionStorage.removeItem(STORAGE_KEYS.GOOGLE_NONCE);
             
             notifications.show({
                 title: 'Error',
@@ -62,14 +64,7 @@ export default function GoogleAuthCallback() {
 
         // Get backend URL
         const getBackendUrl = () => {
-            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-            const backendHost = import.meta.env.VITE_API_HOST || window.location.origin;
-            
-            if (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://')) {
-                return `${apiBaseUrl}/auth/google/callback`;
-            }
-            const basePath = apiBaseUrl.startsWith('/') ? apiBaseUrl : `/${apiBaseUrl}`;
-            return `${backendHost}${basePath}/auth/google/callback`;
+            return getApiUrl('/auth/google/callback');
         };
 
         // Send code and verifier to backend
@@ -99,7 +94,7 @@ export default function GoogleAuthCallback() {
                 
                 // Store token
                 if (data.token) {
-                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
                     
                     notifications.show({
                         title: 'Success',

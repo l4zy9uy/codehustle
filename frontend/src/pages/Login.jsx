@@ -19,6 +19,9 @@ import AuthLayout from '../components/AuthLayout';
 import { login as loginApi, forgotPassword } from '../lib/api/auth';
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateNonce } from '../utils/pkce';
 import googleIconLogo from '../assets/google-icon-logo.svg';
+import { COLORS, STORAGE_KEYS, OAUTH_CONFIG } from '../constants';
+import { ENV, getOAuthRedirectUri } from '../env';
+import { loginStyles } from './Login.styles';
 
 
 export default function Auth() {
@@ -27,23 +30,8 @@ export default function Auth() {
     const resetSent = searchParams.get('reset') === 'sent';
     const [gisLoaded, setGisLoaded] = useState(false);
 
-    // Get Google Client ID from environment variable
-    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    
-    // Get backend URL for OAuth redirect
-    // VITE_API_BASE_URL can be a full URL (http://localhost:3000) or a path (/api)
-    const getBackendRedirectUri = () => {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-        // If it's already a full URL, use it directly
-        if (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://')) {
-            return `${apiBaseUrl}/auth/google/callback`;
-        }
-        // If it's a path, construct full URL from window location
-        // For OAuth, we need the backend host - use VITE_API_HOST if available, otherwise use current origin
-        const backendHost = import.meta.env.VITE_API_HOST || window.location.origin;
-        const basePath = apiBaseUrl.startsWith('/') ? apiBaseUrl : `/${apiBaseUrl}`;
-        return `${backendHost}${basePath}/auth/google/callback`;
-    };
+    // Get Google Client ID from environment
+    const GOOGLE_CLIENT_ID = ENV.GOOGLE_CLIENT_ID;
 
     // Check if Google Identity Services is loaded
     useEffect(() => {
@@ -92,20 +80,20 @@ export default function Auth() {
             const nonce = generateNonce();
 
             // Store PKCE verifier and state in sessionStorage for validation after redirect
-            sessionStorage.setItem('google_code_verifier', codeVerifier);
-            sessionStorage.setItem('google_state', state);
-            sessionStorage.setItem('google_nonce', nonce);
+            sessionStorage.setItem(STORAGE_KEYS.GOOGLE_CODE_VERIFIER, codeVerifier);
+            sessionStorage.setItem(STORAGE_KEYS.GOOGLE_STATE, state);
+            sessionStorage.setItem(STORAGE_KEYS.GOOGLE_NONCE, nonce);
 
             // Initialize the code client
             window.google.accounts.oauth2.initCodeClient({
                 client_id: GOOGLE_CLIENT_ID,
-                scope: 'openid email profile',
+                scope: OAUTH_CONFIG.GOOGLE_SCOPES,
                 ux_mode: 'redirect',
-                redirect_uri: getBackendRedirectUri(),
+                redirect_uri: getOAuthRedirectUri(),
                 state: state,
                 nonce: nonce,
                 code_challenge: codeChallenge,
-                code_challenge_method: 'S256',
+                code_challenge_method: OAUTH_CONFIG.PKCE_CODE_CHALLENGE_METHOD,
             }).requestCode();
         } catch (error) {
             console.error('Google Sign-In error:', error);
@@ -139,9 +127,9 @@ export default function Auth() {
             // Login flow
             try {
                 const { token } = await loginApi(values);
-                localStorage.setItem('authToken', token);
+                localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
                 notifications.show({ title: 'Success', message: 'Logged in!' });
-                window.location.href = '/dashboard';
+                window.location.href = '/home';
             } catch (err) {
                 const message = err?.message || 'Invalid credentials';
                 form.setFieldError('password', message);
@@ -224,26 +212,10 @@ export default function Auth() {
                                 leftSection={<img src={googleIconLogo} alt="Google" style={{ width: 20, height: 20 }} />}
                                 onClick={handleGoogleSignIn}
                                 disabled={!gisLoaded}
-                                style={{
-                                    backgroundColor: '#424242',
-                                    border: '1px solid #e0e0e0',
-                                    color: '#ffffff',
-                                    borderRadius: '24px',
-                                    height: '48px',
-                                }}
+                                style={loginStyles.googleButton}
                                 styles={{
-                                    root: {
-                                        '&:hover': {
-                                            backgroundColor: '#353535',
-                                        },
-                                        '&:disabled': {
-                                            backgroundColor: '#424242',
-                                            opacity: 0.6,
-                                        },
-                                    },
-                                    label: {
-                                        color: '#ffffff',
-                                    },
+                                    root: loginStyles.googleButtonHover,
+                                    label: loginStyles.googleButtonLabel,
                                 }}
                             >
                                 Continue with Google

@@ -1,24 +1,27 @@
-export const MAX_CODE_H = 240;
+import { CODE_DISPLAY, COLORS } from '../../constants';
+
+// Re-export constants for backward compatibility and local use
+export const MAX_CODE_H = CODE_DISPLAY.MAX_CODE_HEIGHT;
 
 export const CODE_PREVIEW_BOX = {
-  border: '1px solid var(--mantine-color-default-border)',
-  borderRadius: 8,
+  border: CODE_DISPLAY.BORDER,
+  borderRadius: CODE_DISPLAY.BORDER_RADIUS,
   maxHeight: MAX_CODE_H,
   overflow: 'auto',
-  fontFamily: 'var(--mantine-font-family-monospace)',
-  fontSize: 'var(--mantine-font-size-sm)',
-  padding: 8,
-  background: 'var(--mantine-color-gray-0)'
+  fontFamily: CODE_DISPLAY.FONT_FAMILY,
+  fontSize: CODE_DISPLAY.FONT_SIZE,
+  padding: CODE_DISPLAY.PADDING,
+  background: CODE_DISPLAY.BACKGROUND
 };
 
 export const CODE_BLOCK_BOX = {
-  border: '1px solid var(--mantine-color-default-border)',
-  borderRadius: 8,
-  padding: 8,
-  background: 'var(--mantine-color-gray-0)',
-  fontFamily: 'var(--mantine-font-family-monospace)',
-  fontSize: 'var(--mantine-font-size-sm)'
+  border: CODE_DISPLAY.BORDER,
+  borderRadius: CODE_DISPLAY.BORDER_RADIUS,
+  padding: CODE_DISPLAY.PADDING,
+  background: CODE_DISPLAY.BACKGROUND,
+  fontFamily: CODE_DISPLAY.FONT_FAMILY,
+  fontSize: CODE_DISPLAY.FONT_SIZE
 };
 
-export const DIFF_HL_LEFT = 'rgba(255, 59, 48, 0.12)';
-export const DIFF_HL_RIGHT = 'rgba(46, 160, 67, 0.12)'; 
+export const DIFF_HL_LEFT = COLORS.DIFF_HL_LEFT;
+export const DIFF_HL_RIGHT = COLORS.DIFF_HL_RIGHT; 

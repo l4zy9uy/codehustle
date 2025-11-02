@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { ENV } from '../env';
 
 // Base URL: env override or default to '/api'
-const baseURL = import.meta?.env?.VITE_API_BASE_URL || '/api';
+const baseURL = ENV.API_BASE_URL;
 
 const api = axios.create({
   baseURL,

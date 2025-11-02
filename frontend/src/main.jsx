@@ -9,7 +9,9 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 
 // Optionally enable API mocking in dev via env flag
-if (import.meta.env.VITE_ENABLE_API_MOCKS === 'true') {
+import { ENV } from './env';
+
+if (ENV.ENABLE_API_MOCKS) {
   // Top-level await is supported by Vite
   const { enableApiMocking } = await import('./lib/api/mock');
   enableApiMocking();
