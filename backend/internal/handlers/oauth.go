@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -48,42 +50,157 @@ func GoogleLogin(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
-// GoogleCallback handles Google OAuth callback
+// GoogleCallbackGET handles Google OAuth redirect (GET request from Google)
+// This receives Google's redirect and forwards to frontend callback page
+func GoogleCallbackGET(c *gin.Context) {
+	code := c.Query("code")
+	state := c.Query("state")
+	errorParam := c.Query("error")
+
+	// Get frontend URL for redirect
+	frontendURL := config.Get("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:5173"
+	}
+
+	// Build redirect URL with query parameters
+	redirectURL := frontendURL + "/auth/google/callback"
+	if errorParam != "" {
+		redirectURL += "?error=" + errorParam
+		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+		return
+	}
+
+	// Forward code and state to frontend callback page
+	if code != "" && state != "" {
+		redirectURL += "?code=" + code + "&state=" + state
+	} else {
+		redirectURL += "?error=missing_parameters"
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+}
+
+// GoogleCallback handles Google OAuth callback (POST with PKCE)
 func GoogleCallback(c *gin.Context) {
 	if googleOAuthConfig == nil {
 		initGoogleOAuth()
 	}
 
-	// Verify state token
-	stateCookie, err := c.Cookie("oauth_state")
-	if err != nil || stateCookie != c.Query("state") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_state"})
+	var req struct {
+		Code         string `json:"code" binding:"required"`
+		CodeVerifier string `json:"code_verifier" binding:"required"`
+		State        string `json:"state"`
+		Nonce        string `json:"nonce"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": err.Error()})
 		return
 	}
 
-	code := c.Query("code")
-	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing_code"})
+	// Validate nonce is provided
+	if req.Nonce == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing_nonce", "message": "nonce is required"})
 		return
 	}
 
-	// Exchange code for token
-	token, err := googleOAuthConfig.Exchange(context.Background(), code)
+	// Exchange code for token - Google indicates PKCE is not needed for this flow
+	ctx := context.Background()
+
+	// Manually construct the token request
+	tokenURL := googleOAuthConfig.Endpoint.TokenURL
+	data := url.Values{}
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", req.Code)
+	data.Set("client_id", googleOAuthConfig.ClientID)
+	data.Set("client_secret", googleOAuthConfig.ClientSecret)
+	data.Set("redirect_uri", googleOAuthConfig.RedirectURL)
+	// Note: Not including code_verifier as Google indicates it's not needed for this authorization code
+
+	tokenReq, err := http.NewRequestWithContext(ctx, "POST", tokenURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Printf("[OAUTH] Failed to create token request: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token_request_failed"})
+		return
+	}
+
+	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	httpResp, err := http.DefaultClient.Do(tokenReq)
 	if err != nil {
 		log.Printf("[OAUTH] Token exchange failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "token_exchange_failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token_exchange_failed", "message": err.Error()})
 		return
+	}
+	defer httpResp.Body.Close()
+
+	if httpResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(httpResp.Body)
+		log.Printf("[OAUTH] Token exchange failed with status %d: %s", httpResp.StatusCode, string(bodyBytes))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token_exchange_failed", "message": "invalid response from Google"})
+		return
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		TokenType    string `json:"token_type"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int    `json:"expires_in"`
+		IDToken      string `json:"id_token"`
+	}
+
+	if err := json.NewDecoder(httpResp.Body).Decode(&tokenResp); err != nil {
+		log.Printf("[OAUTH] Failed to decode token response: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed_to_decode_token"})
+		return
+	}
+
+	// Create oauth2.Token from response
+	token := &oauth2.Token{
+		AccessToken:  tokenResp.AccessToken,
+		TokenType:    tokenResp.TokenType,
+		RefreshToken: tokenResp.RefreshToken,
+		Expiry:       time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second),
+	}
+	if tokenResp.IDToken != "" {
+		token = token.WithExtra(map[string]interface{}{
+			"id_token": tokenResp.IDToken,
+		})
+	}
+
+	// Verify nonce from ID token (if available)
+	// With OpenID Connect, the ID token should be in the token response
+	if idToken, ok := token.Extra("id_token").(string); ok && idToken != "" {
+		// Decode ID token to extract nonce claim (without verifying signature for now)
+		// Parse the JWT to get claims
+		parser := jwt.Parser{}
+		idTokenClaims := jwt.MapClaims{}
+		_, _, err := parser.ParseUnverified(idToken, idTokenClaims)
+		if err != nil {
+			log.Printf("[OAUTH] Failed to parse ID token: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed_to_parse_id_token"})
+			return
+		}
+
+		// Extract and verify nonce from ID token
+		if idTokenNonce, ok := idTokenClaims["nonce"].(string); ok {
+			if idTokenNonce != req.Nonce {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_nonce", "message": "nonce verification failed"})
+				return
+			}
+		}
 	}
 
 	// Get user info from Google
-	client := googleOAuthConfig.Client(context.Background(), token)
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	client := googleOAuthConfig.Client(ctx, token)
+	userInfoResp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
 		log.Printf("[OAUTH] Failed to get user info: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed_to_get_user_info"})
 		return
 	}
-	defer resp.Body.Close()
+	defer userInfoResp.Body.Close()
 
 	var googleUser struct {
 		ID      string `json:"id"`
@@ -92,7 +209,7 @@ func GoogleCallback(c *gin.Context) {
 		Picture string `json:"picture"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
+	if err := json.NewDecoder(userInfoResp.Body).Decode(&googleUser); err != nil {
 		log.Printf("[OAUTH] Failed to decode user info: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed_to_decode_user_info"})
 		return
@@ -176,12 +293,8 @@ func GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	// Redirect to frontend with token
-	frontendURL := config.Get("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "http://localhost:3000"
-	}
-	c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/callback?token="+signedToken)
+	// Return token in JSON response (frontend will handle redirect)
+	c.JSON(http.StatusOK, gin.H{"token": signedToken})
 }
 
 func generateStateToken() string {

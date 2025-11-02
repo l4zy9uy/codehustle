@@ -6,3 +6,8 @@ type OAuthIdentity struct {
 	Provider    string `gorm:"size:50;not null" json:"provider"`
 	ProviderSub string `gorm:"size:255;not null;column:provider_sub" json:"provider_sub"`
 }
+
+// TableName specifies the table name for GORM
+func (OAuthIdentity) TableName() string {
+	return "oauth_identities"
+}

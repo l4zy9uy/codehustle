@@ -16,7 +16,8 @@ func RegisterRoutes(r *gin.Engine) {
 	api.POST("/register", handlers.RegisterUser)
 	api.POST("/login", handlers.Login)
 	api.GET("/auth/google", handlers.GoogleLogin)
-	api.GET("/auth/google/callback", handlers.GoogleCallback)
+	api.GET("/auth/google/callback", handlers.GoogleCallbackGET)
+	api.POST("/auth/google/callback", handlers.GoogleCallback)
 
 	// Protected endpoints (require auth)
 	protected := api.Group("")
