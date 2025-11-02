@@ -12,6 +12,7 @@ import ProblemPage from "./pages/SingleProblem";
 import CourseDetail from "./pages/CourseDetail";
 import ProblemEditor from "./pages/admin/problems/ProblemEditor";
 import AdminSettings from "./pages/admin/AdminSettings";
+import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 
 // Add mock data for ProfilePage
 const mockUser = { handle: 'john_doe', displayName: 'John Doe', avatarUrl: 'https://i.pravatar.cc/150?img=3' };
@@ -29,6 +30,7 @@ export default function App() {
 
             {/* Your existing routes */}
             <Route path="login"         element={<Login />} />
+            <Route path="auth/google/callback" element={<GoogleAuthCallback />} />
             <Route path=""         element={<LandingPage />} />
             <Route element={<AppLayout />}>
                 {/* Problems page (list) */}
