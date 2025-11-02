@@ -101,7 +101,7 @@ export default function GoogleAuthCallback() {
                         message: 'Logged in with Google!',
                         color: 'green',
                     });
-                    navigate('/dashboard');
+                    navigate('/home');
                 } else {
                     throw new Error('No token received from backend');
                 }

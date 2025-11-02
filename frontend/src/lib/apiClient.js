@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { ENV } from '../env';
+import { getApiUrl } from '../env';
+import { STORAGE_KEYS } from '../constants';
 
-// Base URL: env override or default to '/api'
-const baseURL = ENV.API_BASE_URL;
+// Base URL: constructed full API URL
+const baseURL = getApiUrl('');
 
 const api = axios.create({
   baseURL,
@@ -15,7 +16,7 @@ const api = axios.create({
 // Attach Authorization header from localStorage if present
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     if (token) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
