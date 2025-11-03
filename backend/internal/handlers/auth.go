@@ -16,6 +16,7 @@ import (
 	"codehustle/backend/internal/config"
 	"codehustle/backend/internal/constants"
 	"codehustle/backend/internal/db"
+	"codehustle/backend/internal/middleware"
 	"codehustle/backend/internal/models"
 )
 
@@ -151,4 +152,62 @@ func Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, LoginResponse{Token: signed})
+}
+
+// GetMeResponse represents the response for the /me endpoint
+type GetMeResponse struct {
+	ID        string   `json:"id"`
+	Email     string   `json:"email"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	IsActive  bool     `json:"is_active"`
+	Roles     []string `json:"roles"`
+}
+
+// GetMe returns the current authenticated user's profile
+func GetMe(c *gin.Context) {
+	// Get user context from middleware
+	val, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing_user_context"})
+		return
+	}
+
+	userCtx, ok := val.(middleware.UserContext)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_user_context"})
+		return
+	}
+
+	// Fetch full user record from database
+	var user models.User
+	if err := db.DB.Where("id = ?", userCtx.ID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user_not_found"})
+		return
+	}
+
+	// Load user roles from database
+	var roles []string
+	if err := db.DB.Raw(`
+		SELECT r.name 
+		FROM roles r 
+		INNER JOIN user_roles ur ON r.id = ur.role_id 
+		WHERE ur.user_id = ?
+	`, user.ID).Scan(&roles).Error; err != nil {
+		log.Printf("[AUTH] Failed to load roles for user %s: %v", user.ID, err)
+		// Continue with empty roles if query fails
+		roles = []string{}
+	}
+
+	// Return only the requested fields
+	response := GetMeResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		IsActive:  user.IsActive,
+		Roles:     roles,
+	}
+
+	c.JSON(http.StatusOK, response)
 }

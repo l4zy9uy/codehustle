@@ -23,6 +23,9 @@ func RegisterRoutes(r *gin.Engine) {
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
 
+	// User routes
+	protected.GET("/me", handlers.GetMe)
+
 	// Course routes
 	protected.GET("/courses", middleware.RequireRole(constants.StudentRoles...), handlers.ListCourses)
 
