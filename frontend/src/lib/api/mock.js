@@ -78,6 +78,8 @@ export function enableApiMocking() {
     const status = (params.get('status') || 'all').toLowerCase();
     const tagsParam = params.getAll('tags');
     const tagList = tagsParam.length ? tagsParam : (params.get('tags') || '').split(',').filter(Boolean);
+    const page = parseInt(params.get('page') || '1');
+    const page_size = parseInt(params.get('page_size') || '50');
 
     const filtered = problems.filter((p) => {
       const byQuery = !q || p.title.toLowerCase().includes(q) || (p.tags || []).some((t) => String(t).toLowerCase().includes(q));
@@ -86,7 +88,31 @@ export function enableApiMocking() {
       const byTags = tagList.length === 0 || (Array.isArray(p.tags) && tagList.every((t) => p.tags.map(String).includes(String(t))));
       return byQuery && byDiff && byStatus && byTags;
     });
-    return ok({ items: filtered });
+
+    // Convert to new API format
+    const problemsFormatted = filtered.map(p => ({
+      slug: p.slug,
+      name: p.title,
+      tags: p.tags || [],
+      diff: p.difficulty?.toLowerCase() || 'easy',
+      // Include additional fields that the table expects
+      solved: p.solved || false,
+      acceptanceRate: p.acceptanceRate || 50,
+      solvedCount: p.solvedCount || Math.round(((p.acceptanceRate || 50) / 100) * 5000),
+      index: p.index
+    }));
+
+    // Simple pagination
+    const startIndex = (page - 1) * page_size;
+    const endIndex = startIndex + page_size;
+    const paginatedProblems = problemsFormatted.slice(startIndex, endIndex);
+
+    return ok({
+      problems: paginatedProblems,
+      total: problemsFormatted.length,
+      page: page,
+      page_size: page_size
+    });
   });
 
   mock.onGet(/\/problems\/[^/]+$/).reply((config) => {

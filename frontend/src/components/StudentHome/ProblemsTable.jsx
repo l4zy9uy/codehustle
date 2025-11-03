@@ -41,20 +41,20 @@ export default function ProblemsTable({ problems = [] }) {
               </Table.Tr>
             )}
             {problems.map((p, idx) => (
-              <Table.Tr key={p.id}>
+              <Table.Tr key={p.slug}>
                 <Table.Td style={{ paddingLeft: 8 }}>{p.index ?? idx + 1}</Table.Td>
                 <Table.Td style={{ textAlign: 'center' }}>
                   {p.solved ? <IconCheck size={16} aria-label="Solved" title="Solved" /> : null}
                 </Table.Td>
                 <Table.Td style={{ verticalAlign: 'baseline' }}>
-                  <Anchor href={p.href}>{p.title}</Anchor>
+                  <Anchor href={`/problems/${p.slug}`}>{p.name}</Anchor>
                 </Table.Td>
                 <Table.Td>
                   <Text
                     size="sm"
-                    style={{ color: `var(--mantine-color-${difficultyColor(p.difficulty)}-6)` }}
+                    style={{ color: `var(--mantine-color-${difficultyColor(p.diff)}-6)` }}
                   >
-                    {p.difficulty}
+                    {p.diff}
                   </Text>
                 </Table.Td>
                 <Table.Td style={{ textAlign: 'right' }}>
@@ -69,7 +69,7 @@ export default function ProblemsTable({ problems = [] }) {
                       variant="subtle"
                       color="gray"
                       size="sm"
-                      onClick={() => window.location.href = `/problems/${p.id}/edit`}
+                      onClick={() => window.location.href = `/problems/${p.slug}/edit`}
                       title="Edit problem"
                     >
                       <IconEdit size={16} />

@@ -1,9 +1,9 @@
 import api from '../apiClient';
 
-export async function getProblems(params) {
-  // params: { q?, difficulty?, status?, tags?: string | string[] }
+export async function getProblems(params = {}) {
+  // params: { q?, difficulty?, status?, tags?: string | string[], page?, page_size? }
   const { data } = await api.get('/problems', { params });
-  return data; // { items: [...] }
+  return data; // { problems: [...], total: number, page: number, page_size: number }
 }
 
 export async function getProblem(slug) {
