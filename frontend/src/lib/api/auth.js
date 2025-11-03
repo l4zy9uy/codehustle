@@ -12,6 +12,6 @@ export async function forgotPassword(email) {
 
 export async function getMe() {
   const { data } = await api.get('/me');
-  return data; // { user }
+  return { user: data }; // Wrap response in { user } format
 }
 

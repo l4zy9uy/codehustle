@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getMe } from '../lib/api/auth';
+import { STORAGE_KEYS } from '../constants';
 
 // Create authentication context
 const AuthContext = createContext(null);
@@ -10,7 +11,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     if (token) {
       // Fetch current user profile
       getMe()
@@ -18,24 +19,22 @@ export function AuthProvider({ children }) {
           setUser(data?.user || null);
         })
         .catch(() => {
-          localStorage.removeItem('authToken');
+          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
           setUser(null);
         })
         .finally(() => setLoading(false));
     } else {
-            // Mock: default admin when no token to demo edit flows
-      setUser({ id: 'mock-admin', name: 'Admin User', role: 'admin', email: 'admin@example.com' });
       setLoading(false);
     }
   }, []);
 
   const login = (token, userData) => {
-    localStorage.setItem('authToken', token);
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
     setUser(userData || null);
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     setUser(null);
   };
 

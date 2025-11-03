@@ -14,7 +14,7 @@ import {
     Alert,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import { login as loginApi, forgotPassword } from '../lib/api/auth';
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateNonce } from '../utils/pkce';
@@ -22,6 +22,7 @@ import googleIconLogo from '../assets/google-icon-logo.svg';
 import { COLORS, STORAGE_KEYS, OAUTH_CONFIG } from '../constants';
 import { ENV, getOAuthRedirectUri } from '../env';
 import { loginStyles } from './Login.styles';
+import { useAuth } from '../context/AuthContext';
 
 
 export default function Auth() {
@@ -29,9 +30,18 @@ export default function Auth() {
     const [searchParams, setSearchParams] = useSearchParams();
     const resetSent = searchParams.get('reset') === 'sent';
     const [gisLoaded, setGisLoaded] = useState(false);
+    const navigate = useNavigate();
+    const { user, loading } = useAuth();
 
     // Get Google Client ID from environment
     const GOOGLE_CLIENT_ID = ENV.GOOGLE_CLIENT_ID;
+
+    // Auto redirect if already authenticated
+    useEffect(() => {
+        if (!loading && user) {
+            navigate('/home', { replace: true });
+        }
+    }, [user, loading, navigate]);
 
     // Check if Google Identity Services is loaded
     useEffect(() => {
@@ -137,6 +147,22 @@ export default function Auth() {
             }
         }
     };
+
+    // Show loading while checking authentication
+    if (loading) {
+        return (
+            <AuthLayout>
+                <Stack spacing="xl" style={{ width: 480, marginLeft: '16px', marginRight: '16px' }}>
+                    <Text align="center">Checking authentication...</Text>
+                </Stack>
+            </AuthLayout>
+        );
+    }
+
+    // Don't render login form if user is authenticated
+    if (user) {
+        return null; // Will redirect via useEffect
+    }
 
     return (
         <AuthLayout>

@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { getApiUrl } from '../env';
-import { STORAGE_KEYS } from '../constants';
+import { STORAGE_KEYS, API_VERSION } from '../constants';
 
-// Base URL: constructed full API URL
-const baseURL = getApiUrl('');
+// Base URL: constructed full API URL with version
+const baseURL = `${getApiUrl('')}${API_VERSION}`;
 
 const api = axios.create({
   baseURL,
