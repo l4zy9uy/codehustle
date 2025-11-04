@@ -65,6 +65,24 @@ func UploadFile(bucketName string, objectKey string, file io.Reader, fileSize in
 	return nil
 }
 
+// GetFile retrieves file content from MinIO
+func GetFile(bucketName string, objectKey string) ([]byte, error) {
+	ctx := context.Background()
+
+	obj, err := minioClient.GetObject(ctx, bucketName, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get object: %w", err)
+	}
+	defer obj.Close()
+
+	content, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read object: %w", err)
+	}
+
+	return content, nil
+}
+
 // GetProblemStatementsBucket returns the bucket name for problem statements
 func GetProblemStatementsBucket() string {
 	return config.Get("BUCKET_PROBLEM_STATEMENTS")

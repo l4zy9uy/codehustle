@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"codehustle/backend/internal/db"
@@ -9,17 +10,110 @@ import (
 	"codehustle/backend/internal/utils"
 )
 
-// ListProblems returns all problems (optionally filtered by is_public)
-func ListProblems(isPublicOnly bool) ([]models.Problem, error) {
-	var problems []models.Problem
-	query := db.DB.Model(&models.Problem{}).Where("deleted_at IS NULL")
+// ListProblemsResponse represents a paginated list of problems with tags
+type ListProblemsResponse struct {
+	Problems []ProblemListItem `json:"problems"`
+	Total    int64             `json:"total"`
+	Page     int               `json:"page"`
+	PageSize int               `json:"page_size"`
+}
 
+// ProblemListItem represents a single problem in the list
+type ProblemListItem struct {
+	Slug string   `json:"slug"`
+	Name string   `json:"name"`
+	Tags []string `json:"tags"`
+	Diff string   `json:"diff"`
+}
+
+// ListProblems returns paginated problems with tags
+func ListProblems(isPublicOnly bool, page, pageSize int) (*ListProblemsResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 25 // Default page size
+	}
+	if pageSize > 100 {
+		pageSize = 100 // Max page size
+	}
+
+	offset := (page - 1) * pageSize
+
+	// Build base query for counting
+	countQuery := db.DB.Model(&models.Problem{}).Where("deleted_at IS NULL")
+	if isPublicOnly {
+		countQuery = countQuery.Where("is_public = ?", 1)
+	}
+
+	// Get total count
+	var total int64
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	// Build query for fetching problems with pagination
+	query := db.DB.Model(&models.Problem{}).Where("deleted_at IS NULL")
 	if isPublicOnly {
 		query = query.Where("is_public = ?", 1)
 	}
 
-	err := query.Find(&problems).Error
-	return problems, err
+	// Get paginated problems - ensure Offset and Limit are applied
+	var problems []models.Problem
+	if err := query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&problems).Error; err != nil {
+		return nil, err
+	}
+
+	log.Printf("[REPO] ListProblems: page=%d, pageSize=%d, offset=%d, total=%d, returned=%d", page, pageSize, offset, total, len(problems))
+
+	// Load tags for each problem
+	problemIDs := make([]string, len(problems))
+	for i, p := range problems {
+		problemIDs[i] = p.ID
+	}
+
+	// Query problem tags with tag names
+	type ProblemTag struct {
+		ProblemID string
+		TagName   string
+	}
+	var problemTags []ProblemTag
+	if len(problemIDs) > 0 {
+		db.DB.Raw(`
+			SELECT pt.problem_id, t.name as tag_name
+			FROM problem_tags pt
+			INNER JOIN tags t ON pt.tag_id = t.id
+			WHERE pt.problem_id IN ?
+		`, problemIDs).Scan(&problemTags)
+	}
+
+	// Map tags to problems
+	tagsMap := make(map[string][]string)
+	for _, pt := range problemTags {
+		tagsMap[pt.ProblemID] = append(tagsMap[pt.ProblemID], pt.TagName)
+	}
+
+	// Build response
+	items := make([]ProblemListItem, len(problems))
+	for i, p := range problems {
+		tags := tagsMap[p.ID]
+		if tags == nil {
+			tags = []string{}
+		}
+		items[i] = ProblemListItem{
+			Slug: p.Slug,
+			Name: p.Title,
+			Tags: tags,
+			Diff: p.Difficulty,
+		}
+	}
+
+	return &ListProblemsResponse{
+		Problems: items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
 }
 
 // GetProblem retrieves a problem by ID or slug
@@ -30,6 +124,30 @@ func GetProblem(identifier string) (*models.Problem, error) {
 		return nil, err
 	}
 	return &problem, nil
+}
+
+// GetProblemWithTags retrieves a problem with its tags
+func GetProblemWithTags(identifier string) (*models.Problem, []string, error) {
+	var problem models.Problem
+	err := db.DB.Where("(slug = ? OR id = ?) AND deleted_at IS NULL", identifier, identifier).First(&problem).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Load tags
+	var tagNames []string
+	db.DB.Raw(`
+		SELECT t.name
+		FROM problem_tags pt
+		INNER JOIN tags t ON pt.tag_id = t.id
+		WHERE pt.problem_id = ?
+	`, problem.ID).Scan(&tagNames)
+
+	if tagNames == nil {
+		tagNames = []string{}
+	}
+
+	return &problem, tagNames, nil
 }
 
 // CreateProblem inserts a new problem and generates a slug from the title if not provided

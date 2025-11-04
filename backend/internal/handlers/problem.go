@@ -5,6 +5,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,8 +18,25 @@ import (
 	"codehustle/backend/internal/utils"
 )
 
-// ListProblems returns a list of problems
+// ListProblems returns a paginated list of problems
 func ListProblems(c *gin.Context) {
+	// Get pagination parameters
+	page := c.DefaultQuery("page", "1")
+	pageSize := c.DefaultQuery("page_size", "25")
+
+	pageNum, err := strconv.Atoi(page)
+	if err != nil || pageNum < 1 {
+		pageNum = 1
+	}
+
+	pageSizeNum, err := strconv.Atoi(pageSize)
+	if err != nil || pageSizeNum < 1 {
+		pageSizeNum = 25
+	}
+	if pageSizeNum > 100 {
+		pageSizeNum = 100
+	}
+
 	// Get user context to check if they're admin/lecturer (can see private problems)
 	userCtx, exists := c.Get("user")
 	if !exists {
@@ -29,16 +47,14 @@ func ListProblems(c *gin.Context) {
 	// Check if user is admin or lecturer to show all problems
 	isPublicOnly := true
 	if userCtxVal, ok := userCtx.(middleware.UserContext); ok {
-		log.Printf("[PROBLEM] User roles: %v", userCtxVal.Roles)
 		if constants.HasAnyRole(userCtxVal.Roles, constants.PrivilegedRoles) {
 			isPublicOnly = false
-			log.Printf("[PROBLEM] User has privileged role, showing all problems")
 		}
 	}
 
-	log.Printf("[PROBLEM] Query filter: isPublicOnly = %v", isPublicOnly)
+	log.Printf("[PROBLEM] ListProblems: page=%d, pageSize=%d, isPublicOnly=%v", pageNum, pageSizeNum, isPublicOnly)
 
-	problems, err := repository.ListProblems(isPublicOnly)
+	result, err := repository.ListProblems(isPublicOnly, pageNum, pageSizeNum)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed_to_fetch_problems",
@@ -47,8 +63,30 @@ func ListProblems(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[PROBLEM] Found %d problems", len(problems))
-	c.JSON(http.StatusOK, gin.H{"problems": problems})
+	log.Printf("[PROBLEM] ListProblems response: total=%d, returned=%d", result.Total, len(result.Problems))
+	c.JSON(http.StatusOK, result)
+}
+
+// GetProblemResponse represents a DMOJ-like problem response
+type GetProblemResponse struct {
+	ID                     string                  `json:"id"`                                 // problem ID
+	Code                   string                  `json:"code"`                               // slug
+	Name                   string                  `json:"name"`                               // title
+	Types                  []string                `json:"types"`                              // tag names
+	Diff                   string                  `json:"diff"`                               // difficulty
+	Group                  string                  `json:"group,omitempty"`                    // optional (course name if applicable)
+	TimeLimit              int                     `json:"time_limit"`                         // seconds (convert from ms)
+	MemoryLimit            int64                   `json:"memory_limit"`                       // bytes (convert from kb)
+	LanguageResourceLimits []LanguageResourceLimit `json:"language_resource_limits,omitempty"` // optional
+	Points                 *float64                `json:"points,omitempty"`                   // optional (null if not used)
+	Organizations          []string                `json:"organizations,omitempty"`            // optional
+	Body                   string                  `json:"body"`                               // problem statement content
+}
+
+type LanguageResourceLimit struct {
+	Language    string `json:"language"`
+	TimeLimit   int    `json:"time_limit"` // Changed to int
+	MemoryLimit int64  `json:"memory_limit"`
 }
 
 // GetProblem returns a single problem by ID or slug
@@ -59,7 +97,7 @@ func GetProblem(c *gin.Context) {
 		return
 	}
 
-	problem, err := repository.GetProblem(identifier)
+	problem, tags, err := repository.GetProblemWithTags(identifier)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":   "problem_not_found",
@@ -68,7 +106,31 @@ func GetProblem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"problem": problem})
+	// Retrieve problem statement content from MinIO
+	bucketName := storage.GetProblemStatementsBucket()
+	statementContent, err := storage.GetFile(bucketName, problem.StatementPath)
+	if err != nil {
+		log.Printf("[PROBLEM] Failed to retrieve statement file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed_to_load_statement",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Build response
+	response := GetProblemResponse{
+		ID:          problem.ID,
+		Code:        problem.Slug,
+		Name:        problem.Title,
+		Types:       tags,
+		Diff:        problem.Difficulty,
+		TimeLimit:   problem.TimeLimitMs / 1000,          // Convert ms to seconds (int)
+		MemoryLimit: int64(problem.MemoryLimitKb) * 1024, // Convert kb to bytes
+		Body:        string(statementContent),
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // CreateProblemRequest represents the expected payload for creating a problem
