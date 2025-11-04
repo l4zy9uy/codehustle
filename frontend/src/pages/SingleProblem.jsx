@@ -41,6 +41,22 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+
+// Configure KaTeX options for better math rendering
+const katexOptions = {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  displayMode: false,
+  fleqn: false,
+  macros: {
+    "\\RR": "\\mathbb{R}",
+    "\\NN": "\\mathbb{N}",
+    "\\ZZ": "\\mathbb{Z}",
+    "\\QQ": "\\mathbb{Q}",
+    "\\CC": "\\mathbb{C}",
+  },
+};
 import CopyPre from "../components/CopyPre";
 // Externalized submission components/hooks
 import SubmissionRowExt from "../components/ProblemDetail/SubmissionRow";
@@ -579,6 +595,22 @@ const mdComponents = {
     h5: ({ node, ...props }) => <h5 style={{ margin: '6px 0 4px' }} {...props} />,
     h6: ({ node, ...props }) => <h6 style={{ margin: '6px 0 4px' }} {...props} />,
     li: ({ node, ...props }) => <li style={{ marginBottom: 4 }} {...props} />,
+    code: ({ node, inline, className, children, ...props }) => {
+        // For code blocks (not inline code), render as pre+code without math processing
+        if (!inline && className) {
+            // Convert children to string and ensure dollar signs are rendered literally
+            const codeContent = typeof children === 'string' ? children : String(children);
+            return (
+                <pre style={{ margin: '8px 0', padding: '12px', background: 'var(--mantine-color-gray-0)', borderRadius: '8px', overflow: 'auto' }}>
+                    <code className={className} {...props}>
+                        {codeContent}
+                    </code>
+                </pre>
+            );
+        }
+        // For inline code, render normally
+        return <code className={className} {...props}>{children}</code>;
+    },
 };
 
 export default function ProblemPage({ problem: incomingProblem, onSubmit, defaultLang }) {
@@ -802,29 +834,38 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                             </Group>
                             <Section id="overview" title="Description" hideTitle>
                                 <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                    <ReactMarkdown 
+                                        components={mdComponents} 
+                                        remarkPlugins={[remarkGfm, remarkMath]} 
+                                        rehypePlugins={[[rehypeKatex, katexOptions]]}
+                                    >
                                         {problem.statement?.overview || ''}
                                     </ReactMarkdown>
                                 </Box>
                             </Section>
 
-                            <Section id="input" title="Input">
-                                <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                        {problem.statement?.input || ''}
-                                    </ReactMarkdown>
-                                </Box>
-                            </Section>
+                            {problem.statement?.input && (
+                                <Section id="input" title="Input">
+                                    <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                        <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, katexOptions]]}>
+                                            {problem.statement.input}
+                                        </ReactMarkdown>
+                                    </Box>
+                                </Section>
+                            )}
 
-                            <Section id="output" title="Output">
-                                <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                        {problem.statement?.output || ''}
-                                    </ReactMarkdown>
-                                </Box>
-                            </Section>
+                            {problem.statement?.output && (
+                                <Section id="output" title="Output">
+                                    <Box className="markdown" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                        <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, katexOptions]]}>
+                                            {problem.statement.output}
+                                        </ReactMarkdown>
+                                    </Box>
+                                </Section>
+                            )}
 
-                            <Section id="constraints" title="Constraints">
+                            {problem.statement?.constraints && problem.statement.constraints.length > 0 && (
+                                <Section id="constraints" title="Constraints">
                                 <List
                                     className="markdown"
                                     spacing={1}
@@ -836,7 +877,7 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                     {Array.isArray(problem.statement?.constraints)
                                         ? problem.statement.constraints.map((c, i) => (
                                             <List.Item key={i}>
-                                                <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, katexOptions]]}>
                                                     {c}
                                                 </ReactMarkdown>
                                             </List.Item>
@@ -846,17 +887,20 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                                             .filter(Boolean)
                                             .map((c, i) => (
                                                 <List.Item key={i}>
-                                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, katexOptions]]}>
                                                         {c.trim()}
                                                     </ReactMarkdown>
                                                 </List.Item>
                                             ))}
                                 </List>
-                            </Section>
+                                </Section>
+                            )}
 
-                            <Section id="samples" title="Samples">
-                                <SampleInline samples={problem.samples} />
-                            </Section>
+                            {problem.samples && problem.samples.length > 0 && (
+                                <Section id="samples" title="Samples">
+                                    <SampleInline samples={problem.samples} />
+                                </Section>
+                            )}
 
                             <ToggleTags problem={problem} />
                             </>
