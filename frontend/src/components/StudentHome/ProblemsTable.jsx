@@ -4,11 +4,18 @@ import { IconCheck, IconEdit } from '@tabler/icons-react';
 import { difficultyColor } from '../../utils/filters.jsx';
 import { useAuth } from '../../context/AuthContext';
 
-export default function ProblemsTable({ problems = [] }) {
+export default function ProblemsTable({ problems = [], page = 1, pageSize = 25 }) {
   const { user } = useAuth();
   
   // Check if user has edit permissions (admin or editor role)
   const canEdit = user?.role === 'admin' || user?.role === 'editor';
+
+  // Calculate the starting index based on pagination
+  // Formula: (page - 1) * pageSize + idx + 1
+  // Example: Page 2, idx 0 = (2-1)*25 + 0 + 1 = 26
+  const getIndex = (idx) => {
+    return (page - 1) * pageSize + idx + 1;
+  };
 
   return (
     <Paper withBorder radius="sm" p="sm">
@@ -42,7 +49,7 @@ export default function ProblemsTable({ problems = [] }) {
             )}
             {problems.map((p, idx) => (
               <Table.Tr key={p.slug}>
-                <Table.Td style={{ paddingLeft: 8 }}>{p.index ?? idx + 1}</Table.Td>
+                <Table.Td style={{ paddingLeft: 8 }}>{getIndex(idx)}</Table.Td>
                 <Table.Td style={{ textAlign: 'center' }}>
                   {p.solved ? <IconCheck size={16} aria-label="Solved" title="Solved" /> : null}
                 </Table.Td>
