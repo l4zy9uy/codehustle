@@ -34,6 +34,8 @@ func RegisterRoutes(r *gin.Engine) {
 
 	// Submission routes
 	protected.GET("/submissions", middleware.RequireRole(constants.StudentRoles...), handlers.ListSubmissions)
+	protected.GET("/submissions/:id", middleware.RequireRole(constants.StudentRoles...), handlers.GetSubmission)
+	protected.POST("/problems/:id/submit", middleware.RequireRole(constants.StudentRoles...), handlers.SubmitProblem)
 
 	// Problem routes
 	protected.GET("/problems", middleware.RequireRole(constants.StudentRoles...), handlers.ListProblems)

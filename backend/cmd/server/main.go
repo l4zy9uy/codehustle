@@ -12,6 +12,7 @@ import (
 	"codehustle/backend/internal/config"
 	"codehustle/backend/internal/db"
 	"codehustle/backend/internal/middleware"
+	"codehustle/backend/internal/queue"
 	"codehustle/backend/internal/routes"
 	"codehustle/backend/internal/storage"
 )
@@ -33,6 +34,13 @@ func main() {
 	// Initialize MinIO
 	if err := storage.InitMinIO(); err != nil {
 		panic(fmt.Sprintf("failed to initialize MinIO: %v", err))
+	}
+
+	// Initialize Redis
+	redisAddr := config.Get("REDIS_ADDR")
+	redisPassword := config.Get("REDIS_PASSWORD")
+	if err := queue.InitRedis(redisAddr, redisPassword); err != nil {
+		panic(fmt.Sprintf("failed to initialize Redis: %v", err))
 	}
 
 	r := gin.Default()

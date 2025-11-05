@@ -41,6 +41,10 @@ var defaults = map[string]string{
 	"GOOGLE_CLIENT_SECRET": "",
 	"GOOGLE_REDIRECT_URI":  "http://localhost:8081/api/v1/auth/google/callback",
 	"FRONTEND_URL":         "http://localhost:3000",
+
+	// Redis
+	"REDIS_ADDR":     "127.0.0.1:6378",
+	"REDIS_PASSWORD": "",
 }
 
 // LoadEnv loads environment variables from .env files
