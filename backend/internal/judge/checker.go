@@ -1,19 +1,16 @@
 package judge
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"codehustle/backend/internal/checker"
 	"codehustle/backend/internal/config"
 	"codehustle/backend/internal/models"
 	"codehustle/backend/internal/storage"
@@ -117,71 +114,29 @@ func FloatRelChecker(output, expected string, epsilon float64) bool {
 	return true
 }
 
-func CustomChecker(minioClient *minio.Client, checkerPath string, input, output, expected string, runtimeImage, version string) (bool, error) {
-	bucket := config.Get("BUCKET_PROBLEM_CHECKERS")
-	if bucket == "" {
-		bucket = "problem-checkers"
-	}
+func CustomChecker(minioClient *minio.Client, checkerPath string, input, output, expected string, runtimeImage, version, statementPath string) (bool, error) {
+	// Use checker service to compile and run checker via Piston
+	checkerService := checker.NewService(minioClient)
 
-	// Download checker from MinIO
-	checkerBytes, err := storage.GetFile(bucket, checkerPath)
+	resp, err := checkerService.Check(checker.CheckRequest{
+		CheckerPath:   checkerPath,
+		Input:         input,
+		Output:        output,
+		Expected:      expected,
+		RuntimeImage:  runtimeImage,
+		Version:       version,
+		StatementPath: statementPath,
+	})
+
 	if err != nil {
-		return false, fmt.Errorf("failed to fetch checker: %v", err)
+		return false, err
 	}
 
-	// Create temporary directory for checker
-	tmpDir, err := os.MkdirTemp("", "checker_*")
-	if err != nil {
-		return false, fmt.Errorf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	// Write checker source
-	checkerFile := filepath.Join(tmpDir, "checker.cpp")
-	err = os.WriteFile(checkerFile, checkerBytes, 0644)
-	if err != nil {
-		return false, fmt.Errorf("failed to write checker: %v", err)
+	if resp.Error != "" {
+		return false, fmt.Errorf("%s", resp.Error)
 	}
 
-	// Compile checker
-	cmd := exec.Command("g++", "-std=c++17", "-o", filepath.Join(tmpDir, "checker"), checkerFile)
-	cmd.Dir = tmpDir
-	var compileStderr, compileStdout bytes.Buffer
-	cmd.Stderr = &compileStderr
-	cmd.Stdout = &compileStdout
-	if err := cmd.Run(); err != nil {
-		compilerOutput := compileStderr.String()
-		if compilerOutput == "" {
-			compilerOutput = compileStdout.String()
-		}
-		return false, fmt.Errorf("failed to compile checker: %v\nCompiler output: %s", err, compilerOutput)
-	}
-
-	// Create input, output, and expected files
-	inputFile := filepath.Join(tmpDir, "input")
-	outputFile := filepath.Join(tmpDir, "output")
-	expectedFile := filepath.Join(tmpDir, "expected")
-
-	err = os.WriteFile(inputFile, []byte(input), 0644)
-	if err != nil {
-		return false, fmt.Errorf("failed to write input file: %v", err)
-	}
-	err = os.WriteFile(outputFile, []byte(output), 0644)
-	if err != nil {
-		return false, fmt.Errorf("failed to write output file: %v", err)
-	}
-	err = os.WriteFile(expectedFile, []byte(expected), 0644)
-	if err != nil {
-		return false, fmt.Errorf("failed to write expected file: %v", err)
-	}
-
-	// Run checker
-	checkerExec := filepath.Join(tmpDir, "checker")
-	cmd = exec.Command(checkerExec, inputFile, outputFile, expectedFile)
-	cmd.Dir = tmpDir
-
-	err = cmd.Run()
-	return err == nil, nil
+	return resp.Accepted, nil
 }
 
 // ExecuteCode executes user code via Piston API
@@ -286,7 +241,7 @@ func ExecuteCode(code, language, version, stdin string, timeLimitMs, memoryLimit
 }
 
 // CheckOutput checks output using the appropriate checker
-func CheckOutput(judge *models.ProblemJudge, output, expected, input string) (bool, error) {
+func CheckOutput(judge *models.ProblemJudge, output, expected, input, statementPath string) (bool, error) {
 	minioClient := storage.GetMinIOClient()
 	if minioClient == nil {
 		return false, fmt.Errorf("MinIO client not initialized")
@@ -331,7 +286,7 @@ func CheckOutput(judge *models.ProblemJudge, output, expected, input string) (bo
 		if judge.CheckerVersion != nil {
 			version = *judge.CheckerVersion
 		}
-		return CustomChecker(minioClient, *judge.CheckerCustomPath, input, output, expected, runtimeImage, version)
+		return CustomChecker(minioClient, *judge.CheckerCustomPath, input, output, expected, runtimeImage, version, statementPath)
 	default:
 		return DiffChecker(output, expected), nil
 	}
