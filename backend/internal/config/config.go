@@ -45,6 +45,10 @@ var defaults = map[string]string{
 	// Redis
 	"REDIS_ADDR":     "127.0.0.1:6378",
 	"REDIS_PASSWORD": "",
+
+	// Logging
+	"LOG_LEVEL":  "info", // trace, debug, info, warn, error, fatal, panic
+	"LOG_FORMAT": "text", // text or json
 }
 
 // LoadEnv loads environment variables from .env files

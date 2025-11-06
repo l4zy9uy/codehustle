@@ -63,6 +63,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/redis/go-redis/v9 v9.16.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/swaggo/swag v1.8.12 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect

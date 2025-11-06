@@ -40,3 +40,8 @@ type SubmissionTestCase struct {
 	// Relations
 	TestCase TestCase `gorm:"foreignKey:TestCaseID" json:"test_case,omitempty"`
 }
+
+// TableName specifies the table name for SubmissionTestCase
+func (SubmissionTestCase) TableName() string {
+	return "submission_testcases"
+}
