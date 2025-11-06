@@ -1,6 +1,7 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from 'react-router-dom';
-import { getProblem } from '../lib/api/problems';
+import { getProblem, submitProblem } from '../lib/api/problems';
+import { listSubmissions, getSubmission } from '../lib/api/submissions';
 import {
     Badge,
     Box,
@@ -647,12 +648,58 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
         () => incomingProblem || fetchedProblem || {},
         [incomingProblem, fetchedProblem]
     );
+
+    // Fetch submissions for this problem
+    useEffect(() => {
+        if (!problem.id) return;
+        
+        // Clean up any existing polling intervals before loading new submissions
+        Object.values(pollingIntervalsRef.current).forEach((interval) => {
+            clearInterval(interval);
+        });
+        pollingIntervalsRef.current = {};
+        
+        listSubmissions({ problem_id: problem.id })
+            .then((res) => {
+                // Transform submissions to match expected format
+                const formattedSubmissions = (res.submissions || []).map((s) => {
+                    const base = {
+                        id: s.id,
+                        when: s.submitted_at || s.submittedAt ? new Date(s.submitted_at || s.submittedAt).toLocaleString() : new Date().toLocaleString(),
+                    };
+                    
+                    // Transform additional fields using the transformation function
+                    const transformed = transformSubmissionData(s);
+                    
+                    return { ...base, ...transformed };
+                });
+                
+                setSubmissions(formattedSubmissions);
+                
+                // Start polling for any pending or running submissions
+                formattedSubmissions.forEach((sub) => {
+                    if (sub.status === 'PENDING' || sub.status === 'RUNNING') {
+                        pollSubmissionStatus(sub.id);
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error('Failed to fetch submissions:', error);
+                setSubmissions([]);
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [problem.id]);
+
     // State for selected language and source code
     const [lang, setLang] = useState(defaultLang ?? null);
     const [source, setSource] = useState("");
     // Left pane tab & local submissions list
     const [leftTab, setLeftTab] = useState('problem');
     const [submissions, setSubmissions] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    
+    // Track polling intervals for cleanup
+    const pollingIntervalsRef = useRef({});
     // CodeMirror language extensions based on selected lang (only language modes)
     const extensions = useMemo(() => {
         switch (lang) {
@@ -680,6 +727,182 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
             ? `${problem.time_limit} s`
             : undefined;
 
+    // Normalize status to uppercase to match component expectations
+    const normalizeStatus = (status) => {
+        if (!status) return 'PENDING';
+        const upper = status.toUpperCase();
+        // Map common status formats
+        if (upper === 'PENDING' || upper === 'QUEUED') return 'PENDING';
+        if (upper === 'RUNNING') return 'RUNNING';
+        if (upper === 'ACCEPTED' || upper === 'AC') return 'AC';
+        if (upper === 'WRONG_ANSWER' || upper === 'WA') return 'WA';
+        if (upper === 'TIME_LIMIT_EXCEEDED' || upper === 'TLE') return 'TLE';
+        if (upper === 'COMPILATION_ERROR' || upper === 'CE') return 'CE';
+        if (upper === 'RUNTIME_ERROR' || upper === 'RTE') return 'RTE';
+        if (upper === 'MEMORY_LIMIT_EXCEEDED' || upper === 'MLE') return 'MLE';
+        if (upper === 'PARTIAL') return 'PARTIAL';
+        if (upper === 'SYSTEM_ERROR') return 'SYSTEM_ERROR';
+        return upper;
+    };
+
+    // Helper function to transform API submission to UI format
+    const transformSubmissionData = (submission) => {
+        let status = normalizeStatus(submission.status);
+        const transformed = {
+            status,
+        };
+        
+        // Basic fields
+        if (submission.language || submission.lang) {
+            transformed.lang = submission.language || submission.lang;
+        }
+        if (submission.code || submission.source) {
+            transformed.source = submission.code || submission.source;
+        }
+        
+        // Compilation error log
+        if (submission.compile_log) {
+            transformed.compileLog = submission.compile_log;
+            // If there's a compile log, status should be CE
+            status = 'CE';
+        }
+        
+        // Runtime error - map run_log to runtimeError (StatusRTE expects runtimeError)
+        if (submission.run_log) {
+            transformed.runtimeError = submission.run_log;
+            // If there's a run_log and no compile_log, treat as RTE
+            // (backend might return "wrong_answer" for runtime errors)
+            if (!submission.compile_log) {
+                status = 'RTE';
+            }
+        }
+        
+        // Update status in transformed object
+        transformed.status = status;
+        
+        // Test case results - transform to failedCases format for WA
+        if (submission.test_case_results && Array.isArray(submission.test_case_results)) {
+            // Store raw test case results
+            transformed.testCaseResults = submission.test_case_results;
+            
+            // For wrong_answer status (and not RTE/CE), create failedCases from test_case_results
+            if (status === 'WA') {
+                transformed.failedCases = submission.test_case_results
+                    .filter(tc => {
+                        const tcStatus = tc.status?.toLowerCase();
+                        return tcStatus !== 'accepted' && tcStatus !== 'passed';
+                    })
+                    .map((tc, idx) => ({
+                        id: String(tc.id || tc.test_case_id || `tc_${idx}`),
+                        summary: tc.test_case?.name || `Test case ${idx + 1}`,
+                        input: tc.input || '',
+                        your: tc.your_output || tc.output || '',
+                        expected: tc.expected_output || '',
+                        diffLines: tc.diff_lines || { left: [], right: [] },
+                    }));
+            }
+        }
+        
+        // Summary and stats
+        if (submission.summary) {
+            transformed.summary = submission.summary;
+        }
+        if (submission.score !== undefined) {
+            transformed.score = submission.score;
+        }
+        if (submission.execution_time !== undefined) {
+            transformed.executionTime = submission.execution_time;
+        }
+        if (submission.memory_usage !== undefined) {
+            transformed.memoryUsage = submission.memory_usage;
+        }
+        if (submission.code_size_bytes !== undefined) {
+            transformed.codeSizeBytes = submission.code_size_bytes;
+        }
+        
+        return transformed;
+    };
+
+    // Update a submission in the list
+    const updateSubmissionInList = (submissionId, updates) => {
+        setSubmissions((prev) => {
+            const submissionIdStr = String(submissionId);
+            const found = prev.find((sub) => String(sub.id) === submissionIdStr);
+            
+            if (!found) {
+                console.warn('Submission not found in list:', submissionId, 'Available IDs:', prev.map(s => s.id));
+                return prev;
+            }
+            
+            const updated = prev.map((sub) => {
+                if (String(sub.id) === submissionIdStr) {
+                    const merged = { ...sub, ...updates };
+                    console.log('Updating submission:', sub.id, 'Status:', sub.status, '->', merged.status);
+                    return merged;
+                }
+                return sub;
+            });
+            
+            console.log('Updated submissions list. Count:', updated.length);
+            return updated;
+        });
+    };
+
+    // Poll submission status until it's complete
+    const pollSubmissionStatus = (submissionId) => {
+        // Clear any existing polling for this submission
+        if (pollingIntervalsRef.current[submissionId]) {
+            clearInterval(pollingIntervalsRef.current[submissionId]);
+        }
+
+        const poll = async () => {
+            try {
+                const submission = await getSubmission(submissionId);
+                console.log('Polling submission:', submissionId, 'Raw response:', submission);
+                
+                // Transform the API response to UI format
+                const updates = transformSubmissionData(submission);
+                
+                console.log('Updating submission with:', updates);
+                
+                // Update submission in list
+                updateSubmissionInList(submissionId, updates);
+                
+                // Stop polling if status is not pending or running
+                const status = updates.status;
+                if (status !== 'PENDING' && status !== 'RUNNING') {
+                    console.log('Stopping polling for submission:', submissionId, 'Final status:', status);
+                    if (pollingIntervalsRef.current[submissionId]) {
+                        clearInterval(pollingIntervalsRef.current[submissionId]);
+                        delete pollingIntervalsRef.current[submissionId];
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to poll submission status:', error);
+                // Stop polling on error
+                if (pollingIntervalsRef.current[submissionId]) {
+                    clearInterval(pollingIntervalsRef.current[submissionId]);
+                    delete pollingIntervalsRef.current[submissionId];
+                }
+            }
+        };
+
+        // Poll immediately, then every 1.5 seconds
+        poll();
+        pollingIntervalsRef.current[submissionId] = setInterval(poll, 1500);
+    };
+
+    // Cleanup polling intervals on unmount
+    useEffect(() => {
+        return () => {
+            // Clear all polling intervals
+            Object.values(pollingIntervalsRef.current).forEach((interval) => {
+                clearInterval(interval);
+            });
+            pollingIntervalsRef.current = {};
+        };
+    }, []);
+
     // Keyboard shortcut: Ctrl+Enter to submit
     useEffect(() => {
         function onKey(e) {
@@ -694,58 +917,63 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     }, [lang, source, problem]);
 
     function handleSubmit() {
-        if (typeof onSubmit === "function") onSubmit({ lang, source, problem });
-        const created = { id: `local_${Date.now()}`, when: new Date().toLocaleString(), lang, status: 'PENDING', source };
-        setSubmissions((prev) => [created, ...prev]);
-        setLeftTab('submissions');
-    }
+        // Validate inputs
+        if (!lang || !source.trim() || !problem.id) {
+            console.error('Missing required fields for submission');
+            return;
+        }
 
-    // Seed mock submissions for demo when empty
-    useEffect(() => {
-        if (Array.isArray(submissions) && submissions.length > 0) return;
-        const now = new Date();
-        const fmt = (d) => d.toLocaleString();
-        const mocks = [
-            {
-                id: 'sub_ac_1', status: 'AC', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 60 * 2)),
-                source: '#include <bits/stdc++.h>\nusing namespace std;\nint main(){ios::sync_with_stdio(false);cin.tie(nullptr);int n; if(!(cin>>n)) return 0; long long s=0; for(int i=0;i<n;i++){int x;cin>>x; s+=x;} cout<<s<<"\n";}',
-                summary: 'Accepted',
-            },
-            {
-                id: 'sub_wa_1', status: 'WA', lang: 'py310', when: fmt(new Date(now.getTime() - 1000 * 60 * 5)),
-                source: 'n=int(input())\narr=list(map(int,input().split()))\nprint(sum(arr[:-1]))\n',
-                summary: 'Wrong Answer on hidden tests',
-                failedCases: [
-                    { id: 'c1', summary: 'Mismatch at line 2', input: '3\n1 2 3', your: '6\n1 2', expected: '6\n1 2 3', diffLines: { left: [1], right: [1] } },
-                    { id: 'c2', summary: 'Missing last number', input: '2\n10 20', your: '30', expected: '30\n20', diffLines: { left: [], right: [0] } },
-                ],
-            },
-            {
-                id: 'sub_ce_1', status: 'CE', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 60 * 9)),
-                source: '#include <iostream>\nint main(){ std::cout<<x; }',
-                summary: 'Compilation failed',
-                compileLog: 'main.cpp:1: error: ‘x’ was not declared in this scope\n   std::cout << x;\n                 ^',
-            },
-            {
-                id: 'sub_rte_1', status: 'RTE', lang: 'java17', when: fmt(new Date(now.getTime() - 1000 * 60 * 12)),
-                source: 'class Main{public static void main(String[]a){int[]x=new int[1];System.out.println(x[2]);}}',
-                summary: 'Runtime error',
-                runtimeError: 'Exception in thread "main" java.lang.ArrayIndexOutOfBoundsException: Index 2 out of bounds for length 1\n\tat Main.main(Main.java:1)',
-            },
-            {
-                id: 'sub_tle_1', status: 'TLE', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 60 * 20)),
-                source: 'while(true){}',
-                summary: 'Time Limit Exceeded',
-            },
-            {
-                id: 'sub_pending_1', status: 'PENDING', lang: 'cpp17', when: fmt(new Date(now.getTime() - 1000 * 30)),
-                source: 'int main(){}',
-                summary: 'Judging…',
-            },
-        ];
-        setSubmissions(mocks);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        // Call parent onSubmit if provided (for compatibility)
+        if (typeof onSubmit === "function") onSubmit({ lang, source, problem });
+
+        // Set submitting state
+        setSubmitting(true);
+
+        // Submit to API
+        submitProblem(problem.id, { lang, source })
+            .then((submission) => {
+                // Transform submission to match expected format
+                const base = {
+                    id: submission.id,
+                    when: submission.submitted_at || submission.submittedAt ? new Date(submission.submitted_at || submission.submittedAt).toLocaleString() : new Date().toLocaleString(),
+                };
+                
+                // Transform additional fields using the transformation function
+                const transformed = transformSubmissionData(submission);
+                
+                // Ensure source is set (use submitted source if API doesn't return it)
+                if (!transformed.source && source) {
+                    transformed.source = source;
+                }
+                
+                const formattedSubmission = { ...base, ...transformed };
+                
+                // Add submission to list and switch to submissions tab
+                setSubmissions((prev) => [formattedSubmission, ...prev]);
+                setLeftTab('submissions');
+                
+                // Start polling for status updates if status is pending or running
+                if (formattedSubmission.status === 'PENDING' || formattedSubmission.status === 'RUNNING') {
+                    pollSubmissionStatus(submission.id);
+                }
+            })
+            .catch((error) => {
+                console.error('Submission failed:', error);
+                // Still add a pending submission to show something happened
+                const created = {
+                    id: `local_${Date.now()}`,
+                    when: new Date().toLocaleString(),
+                    lang,
+                    status: 'ERROR',
+                    source,
+                };
+                setSubmissions((prev) => [created, ...prev]);
+                setLeftTab('submissions');
+            })
+            .finally(() => {
+                setSubmitting(false);
+            });
+    }
 
     const isLoading = !incomingProblem && loading;
 
@@ -983,7 +1211,12 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
                             ) : (
                                 <Group justify="space-between" wrap="wrap">
                                     <Text size="xs" c="dimmed">Press Ctrl+Enter (⌘+Enter on Mac) to submit</Text>
-                                    <Button leftSection={<IconSend size={16} />} onClick={handleSubmit}>
+                                    <Button 
+                                        leftSection={<IconSend size={16} />} 
+                                        onClick={handleSubmit}
+                                        loading={submitting}
+                                        disabled={submitting || !lang || !source.trim() || !problem.id}
+                                    >
                                         Submit
                                     </Button>
                                 </Group>

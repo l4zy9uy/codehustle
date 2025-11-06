@@ -2,7 +2,7 @@ import api from '../apiClient';
 
 export async function listSubmissions(params) {
   const { data } = await api.get('/submissions', { params });
-  return data; // { items: [...] }
+  return data; // { submissions: [...], total: number, page: number, page_size: number }
 }
 
 export async function getSubmission(id) {
