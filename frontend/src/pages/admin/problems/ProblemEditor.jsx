@@ -37,6 +37,35 @@ import {
   IconCheck
 } from '@tabler/icons-react';
 import { useAuth } from '../../../context/AuthContext';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+
+// Configure KaTeX options for better math rendering
+const katexOptions = {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  displayMode: false,
+  fleqn: false,
+  macros: {
+    "\\RR": "\\mathbb{R}",
+    "\\NN": "\\mathbb{N}",
+    "\\ZZ": "\\mathbb{Z}",
+    "\\QQ": "\\mathbb{Q}",
+    "\\CC": "\\mathbb{C}",
+  },
+};
+
+// Markdown components for styling
+const mdComponents = {
+  p: ({ node, ...props }) => <Text style={{ marginBottom: '0.5rem' }} {...props} />,
+  h1: ({ node, ...props }) => <Title order={1} style={{ marginTop: '1rem', marginBottom: '0.5rem' }} {...props} />,
+  h2: ({ node, ...props }) => <Title order={2} style={{ marginTop: '1rem', marginBottom: '0.5rem' }} {...props} />,
+  h3: ({ node, ...props }) => <Title order={3} style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }} {...props} />,
+  h4: ({ node, ...props }) => <Title order={4} style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }} {...props} />,
+};
 
 export default function ProblemEditor() {
   const { id } = useParams();
@@ -45,7 +74,7 @@ export default function ProblemEditor() {
   const isEdit = id !== 'new';
   
   // Check permissions
-  const canEdit = user?.role === 'admin' || user?.role === 'editor';
+  const canEdit = user?.roles?.includes('admin') || user?.roles?.includes('editor');
 
   const [problemData, setProblemData] = useState({
     title: '',
@@ -64,6 +93,7 @@ export default function ProblemEditor() {
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
+  const [showPreview, setShowPreview] = useState(false);
 
   // Mock file data
   const [sourceFiles, setSourceFiles] = useState([
@@ -113,10 +143,6 @@ export default function ProblemEditor() {
     }
   };
 
-  const handlePreview = () => {
-    console.log('Preview problem:', problemData);
-  };
-
   const updateDescription = (field, value) => {
     setProblemData(prev => ({
       ...prev,
@@ -140,7 +166,13 @@ export default function ProblemEditor() {
       )}
       {!authLoading && canEdit && (
       <Stack gap="md">
-        {/* Header removed per request */}
+        {/* Page Header */}
+        <Group justify="space-between" align="center">
+          <Title order={1}>Create Problem</Title>
+          <Button leftSection={<IconDeviceFloppy size={18} />} onClick={handleSave} loading={loading}>
+            Save Problem
+          </Button>
+        </Group>
         <Divider />
 
         {/* Tabbed Interface */}
@@ -165,184 +197,244 @@ export default function ProblemEditor() {
 
           {/* Basic Information Tab */}
           <Tabs.Panel value="basic" pt="md">
-            <Grid>
-              <Grid.Col span={8}>
-                <Stack gap="md">
-                  <Paper withBorder p="md">
-                    <Title order={4} mb="md">Basic Information</Title>
-                    <Stack gap="md">
-                      <Grid>
-                        <Grid.Col span={6}>
-                          <TextInput
-                            label="Name"
-                            placeholder="A+B"
-                            value={problemData.title}
-                            onChange={(e) => setProblemData(prev => ({ ...prev, title: e.target.value }))}
-                            required
-                          />
-                        </Grid.Col>
-                        <Grid.Col span={3}>
-                          <Select
-                            label="Encoding"
-                            data={[
-                              { value: 'UTF-8', label: 'UTF-8' },
-                              { value: 'ASCII', label: 'ASCII' },
-                            ]}
-                            value={problemData.encoding}
-                            onChange={(value) => setProblemData(prev => ({ ...prev, encoding: value }))}
-                          />
-                        </Grid.Col>
-                        <Grid.Col span={3}>
-                          <Select
-                            label="Difficulty"
-                            data={[
-                              { value: 'easy', label: 'Easy' },
-                              { value: 'medium', label: 'Medium' },
-                              { value: 'hard', label: 'Hard' },
-                            ]}
-                            value={problemData.difficulty}
-                            onChange={(value) => setProblemData(prev => ({ ...prev, difficulty: value }))}
-                          />
-                        </Grid.Col>
-                        <Grid.Col span={3}>
-                          <NumberInput
-                            label="Time limit (ms)"
-                            value={problemData.timeLimit}
-                            onChange={(value) => setProblemData(prev => ({ ...prev, timeLimit: Number(value) || 0 }))}
-                            min={0}
-                          />
-                        </Grid.Col>
-                        <Grid.Col span={3}>
-                          <NumberInput
-                            label="Memory limit (MB)"
-                            value={problemData.memoryLimit}
-                            onChange={(value) => setProblemData(prev => ({ ...prev, memoryLimit: Number(value) || 0 }))}
-                            min={0}
-                          />
-                        </Grid.Col>
-                      </Grid>
-                    </Stack>
-                  </Paper>
-                </Stack>
-              </Grid.Col>
-
-              <Grid.Col span={4}>
-                <Stack gap="md">
-                  <Paper withBorder p="md">
-                    <Title order={4} mb="md">Problem Info</Title>
-                    <Stack gap="sm">
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Status</Text>
-                        <Badge color="blue">Draft</Badge>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Author</Text>
-                        <Text size="sm">{user?.name || 'Unknown'}</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Created</Text>
-                        <Text size="sm">{isEdit ? '2 days ago' : 'Now'}</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Last Modified</Text>
-                        <Text size="sm">{isEdit ? '1 hour ago' : 'Now'}</Text>
-                      </Group>
-                    </Stack>
-                  </Paper>
-
-                  <Paper withBorder p="md">
-                    <Title order={4} mb="md">Tags</Title>
+            <Paper withBorder p="md">
+              <Title order={4} mb="md">Basic Information</Title>
+              <Stack gap="md">
+                <Grid>
+                  <Grid.Col span={6}>
+                    <TextInput
+                      label="Name"
+                      placeholder="A+B"
+                      value={problemData.title}
+                      onChange={(e) => setProblemData(prev => ({ ...prev, title: e.target.value }))}
+                      required
+                      radius="sm"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={3}>
+                    <Select
+                      label="Encoding"
+                      data={[
+                        { value: 'UTF-8', label: 'UTF-8' },
+                        { value: 'ASCII', label: 'ASCII' },
+                      ]}
+                      value={problemData.encoding}
+                      onChange={(value) => setProblemData(prev => ({ ...prev, encoding: value }))}
+                      radius="sm"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={3}>
+                    <Select
+                      label="Difficulty"
+                      data={[
+                        { value: 'easy', label: 'Easy' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'hard', label: 'Hard' },
+                      ]}
+                      value={problemData.difficulty}
+                      onChange={(value) => setProblemData(prev => ({ ...prev, difficulty: value }))}
+                      radius="sm"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={3}>
+                    <NumberInput
+                      label="Time limit (ms)"
+                      value={problemData.timeLimit}
+                      onChange={(value) => setProblemData(prev => ({ ...prev, timeLimit: Number(value) || 0 }))}
+                      min={0}
+                      radius="sm"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={3}>
+                    <NumberInput
+                      label="Memory limit (MB)"
+                      value={problemData.memoryLimit}
+                      onChange={(value) => setProblemData(prev => ({ ...prev, memoryLimit: Number(value) || 0 }))}
+                      min={0}
+                      radius="sm"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={12}>
                     <Stack gap="xs">
+                      <Text size="sm" fw={500}>Tags</Text>
                       <Group gap="xs">
                         {problemData.tags.map((tag, index) => (
-                          <Badge key={index} variant="light" color="gray">
-                            {tag}
+                          <Badge 
+                            key={index} 
+                            variant="light" 
+                            color="gray"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => setProblemData(prev => ({ 
+                              ...prev, 
+                              tags: prev.tags.filter((_, i) => i !== index) 
+                            }))}
+                          >
+                            {tag} ×
                           </Badge>
                         ))}
                       </Group>
                       <Group gap="xs">
                         <TextInput
-                          placeholder="New tag"
+                          placeholder="Add a tag"
                           value={tagInput ?? ''}
                           onChange={(e) => setTagInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              const next = (tagInput ?? '').trim();
+                              if (!next) return;
+                              setProblemData(prev => ({ ...prev, tags: [...prev.tags, next] }));
+                              setTagInput('');
+                            }
+                          }}
                           style={{ flex: 1 }}
+                          radius="sm"
                         />
-                        <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => {
-                          const next = (tagInput ?? '').trim();
-                          if (!next) return;
-                          setProblemData(prev => ({ ...prev, tags: [...prev.tags, next] }));
-                          setTagInput('');
-                        }}>Add</Button>
+                        <Button 
+                          size="sm" 
+                          leftSection={<IconPlus size={14} />} 
+                          onClick={() => {
+                            const next = (tagInput ?? '').trim();
+                            if (!next) return;
+                            setProblemData(prev => ({ ...prev, tags: [...prev.tags, next] }));
+                            setTagInput('');
+                          }}
+                          radius="sm"
+                        >
+                          Add
+                        </Button>
                       </Group>
                     </Stack>
-                  </Paper>
-                </Stack>
-              </Grid.Col>
-            </Grid>
+                  </Grid.Col>
+                </Grid>
+              </Stack>
+            </Paper>
           </Tabs.Panel>
 
           {/* Description Tab */}
           <Tabs.Panel value="description" pt="md">
             <Stack gap="md">
-              <Text size="sm" c="dimmed">
-                See our brief manual to learn about supported TeX commands.
-              </Text>
+              <Group justify="space-between" align="center">
+                <Text size="sm" c="dimmed">
+                  See our brief manual to learn about supported TeX commands.
+                </Text>
+                <Button 
+                  variant={showPreview ? "filled" : "outline"} 
+                  size="sm" 
+                  leftSection={<IconEye size={16} />}
+                  onClick={() => setShowPreview(!showPreview)}
+                >
+                  {showPreview ? 'Edit' : 'Preview'}
+                </Button>
+              </Group>
               
-              <Paper withBorder p="md">
-                <Group justify="space-between" mb="md">
-                  <Title order={4}>Legend</Title>
-                  <Button variant="outline" size="xs">Drafts</Button>
-                </Group>
-                <Textarea
-                  placeholder="You are given two integers $a$ and $b$. Print $a+b$."
-                  value={problemData.description.legend}
-                  onChange={(e) => updateDescription('legend', e.target.value)}
-                  minRows={6}
-                  autosize
-                />
-              </Paper>
+              {!showPreview ? (
+                <>
+                  <Paper withBorder p="md">
+                    <Title order={4} mb="md">Problem Description</Title>
+                    <Textarea
+                      placeholder="You are given two integers $a$ and $b$. Print $a+b$."
+                      value={problemData.description.legend}
+                      onChange={(e) => updateDescription('legend', e.target.value)}
+                      minRows={6}
+                      autosize
+                      radius="sm"
+                    />
+                  </Paper>
 
-              <Paper withBorder p="md">
-                <Group justify="space-between" mb="md">
-                  <Title order={4}>Input format</Title>
-                  <Button variant="outline" size="xs">Drafts</Button>
-                </Group>
-                <Textarea
-                  placeholder="The only line of the input contains integers $a$ and $b$ ($-100 \\le a,b \\le 100$)."
-                  value={problemData.description.inputFormat}
-                  onChange={(e) => updateDescription('inputFormat', e.target.value)}
-                  minRows={4}
-                  autosize
-                />
-              </Paper>
+                  <Paper withBorder p="md">
+                    <Title order={4} mb="md">Input format</Title>
+                    <Textarea
+                      placeholder="The only line of the input contains integers $a$ and $b$ ($-100 \\le a,b \\le 100$)."
+                      value={problemData.description.inputFormat}
+                      onChange={(e) => updateDescription('inputFormat', e.target.value)}
+                      minRows={4}
+                      autosize
+                      radius="sm"
+                    />
+                  </Paper>
 
-              <Paper withBorder p="md">
-                <Group justify="space-between" mb="md">
-                  <Title order={4}>Output format</Title>
-                  <Button variant="outline" size="xs">Drafts</Button>
-                </Group>
-                <Textarea
-                  placeholder="Print $a+b$."
-                  value={problemData.description.outputFormat}
-                  onChange={(e) => updateDescription('outputFormat', e.target.value)}
-                  minRows={4}
-                  autosize
-                />
-              </Paper>
+                  <Paper withBorder p="md">
+                    <Title order={4} mb="md">Output format</Title>
+                    <Textarea
+                      placeholder="Print $a+b$."
+                      value={problemData.description.outputFormat}
+                      onChange={(e) => updateDescription('outputFormat', e.target.value)}
+                      minRows={4}
+                      autosize
+                      radius="sm"
+                    />
+                  </Paper>
 
-              <Paper withBorder p="md">
-                <Group justify="space-between" mb="md">
-                  <Title order={4}>Notes</Title>
-                  <Button variant="outline" size="xs">Drafts</Button>
-                </Group>
-                <Textarea
-                  placeholder="In the first example, $a=7$ and $b=8$. Thus, the answer is $a+b=7+8=15$."
-                  value={problemData.description.notes}
-                  onChange={(e) => updateDescription('notes', e.target.value)}
-                  minRows={4}
-                  autosize
-                />
-              </Paper>
+                  <Paper withBorder p="md">
+                    <Title order={4} mb="md">Notes</Title>
+                    <Textarea
+                      placeholder="In the first example, $a=7$ and $b=8$. Thus, the answer is $a+b=7+8=15$."
+                      value={problemData.description.notes}
+                      onChange={(e) => updateDescription('notes', e.target.value)}
+                      minRows={4}
+                      autosize
+                      radius="sm"
+                    />
+                  </Paper>
+                </>
+              ) : (
+                <Paper withBorder p="md">
+                  <Title order={4} mb="md">Preview</Title>
+                  <Divider mb="lg" />
+                  <Stack gap="lg">
+                    {problemData.description.legend && (
+                      <div>
+                        <ReactMarkdown 
+                          components={mdComponents} 
+                          remarkPlugins={[remarkGfm, remarkMath]} 
+                          rehypePlugins={[[rehypeKatex, katexOptions]]}
+                        >
+                          {problemData.description.legend}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    
+                    {problemData.description.inputFormat && (
+                      <div>
+                        <Text fw={600} mb="xs">Input Format</Text>
+                        <ReactMarkdown 
+                          components={mdComponents} 
+                          remarkPlugins={[remarkGfm, remarkMath]} 
+                          rehypePlugins={[[rehypeKatex, katexOptions]]}
+                        >
+                          {problemData.description.inputFormat}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    
+                    {problemData.description.outputFormat && (
+                      <div>
+                        <Text fw={600} mb="xs">Output Format</Text>
+                        <ReactMarkdown 
+                          components={mdComponents} 
+                          remarkPlugins={[remarkGfm, remarkMath]} 
+                          rehypePlugins={[[rehypeKatex, katexOptions]]}
+                        >
+                          {problemData.description.outputFormat}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    
+                    {problemData.description.notes && (
+                      <div>
+                        <Text fw={600} mb="xs">Notes</Text>
+                        <ReactMarkdown 
+                          components={mdComponents} 
+                          remarkPlugins={[remarkGfm, remarkMath]} 
+                          rehypePlugins={[[rehypeKatex, katexOptions]]}
+                        >
+                          {problemData.description.notes}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </Stack>
+                </Paper>
+              )}
             </Stack>
           </Tabs.Panel>
 

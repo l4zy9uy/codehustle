@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Container, Pagination } from '@mantine/core';
 import FilterToolbar from '../components/StudentHome/FilterToolbar';
 import ProblemsTable from '../components/StudentHome/ProblemsTable';
 import { getProblems, getTags } from '../lib/api/problems';
+import { useAuth } from '../context/AuthContext';
 
 export default function Problems(props) {
   const { problems: incomingProblems = [], tagsOptions: incomingTagsOptions = [] } = props;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
   const [problems, setProblems] = useState(incomingProblems);
   const [tagsOptions, setTagsOptions] = useState(incomingTagsOptions);
 
@@ -19,6 +24,9 @@ export default function Problems(props) {
   const [difficulty, setDifficulty] = useState('all');
   const [status, setStatus] = useState('all');
   const [tags, setTags] = useState([]);
+
+  // Check if user can create problems (admin or editor only)
+  const canCreateProblem = user?.roles?.includes('admin') || user?.roles?.includes('editor');
 
   useEffect(() => {
     // Build API parameters with filters and pagination
@@ -83,6 +91,8 @@ export default function Problems(props) {
         tags={tags}
         setTags={setTags}
         tagsOptions={tagsOptions}
+        canCreateProblem={canCreateProblem}
+        onCreateClick={() => navigate('/problems/new')}
       />
       <ProblemsTable problems={problems} page={page} pageSize={pageSize} />
       {totalPages > 1 && (

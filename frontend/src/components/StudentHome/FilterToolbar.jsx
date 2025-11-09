@@ -1,6 +1,6 @@
 import React from 'react';
 import { Paper, Flex, TextInput, Group, Text, Button, MultiSelect, Select } from '@mantine/core';
-import { IconSearch } from '@tabler/icons-react';
+import { IconSearch, IconPlus } from '@tabler/icons-react';
 import { ChipList, DIFFICULTY_OPTIONS, STATUS_OPTIONS } from '../../utils/filters.jsx';
 
 export default function FilterToolbar({
@@ -15,6 +15,8 @@ export default function FilterToolbar({
   tags,
   setTags,
   tagsOptions = [],
+  canCreateProblem = false,
+  onCreateClick,
 }) {
   const DIFF_LABEL_VALUE = '__diff_label__';
   const STATUS_LABEL_VALUE = '__status_label__';
@@ -63,7 +65,7 @@ export default function FilterToolbar({
           />
         </Group>
 
-        {/* Right cluster: results count + clear button */}
+        {/* Right cluster: results count + clear button + create button */}
         <Group gap="xs" align="center" style={{ marginLeft: 'auto' }}>
           <Text size="sm" color="dimmed">
             {count} results
@@ -72,6 +74,16 @@ export default function FilterToolbar({
           <Button variant="subtle" size="xs" onClick={clearFilters} disabled={!hasActiveFilters}>
             Clear
           </Button>
+          {canCreateProblem && (
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={onCreateClick}
+              variant="filled"
+              size="xs"
+            >
+              Create Problem
+            </Button>
+          )}
         </Group>
 
         {/* Second row: compact filters (wrap, compact) */}

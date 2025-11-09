@@ -12,7 +12,7 @@ import {
   useMantineTheme,
   rem,
 } from '@mantine/core';
-import { useNavigate, NavLink } from 'react-router-dom';
+import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconLogout, IconUser } from '@tabler/icons-react';
 import logo from '../../assets/logo.svg';
@@ -20,6 +20,7 @@ import logo from '../../assets/logo.svg';
 export default function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useMantineTheme();
   return (
     <AppShell.Header withBorder>
@@ -34,25 +35,38 @@ export default function NavBar() {
               { label: 'Home', to: '/home' },
               { label: 'Problems', to: '/problems' },
               { label: 'Courses', to: '/courses' },
-            ].map(({ label, to }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) => `app-nav-link${isActive ? ' app-nav-link-active' : ''}`}
-                style={({ isActive }) => ({
-                  display: 'inline-block',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? theme.colors.blue[7] : 'var(--mantine-color-text)',
-                  backgroundColor: isActive ? theme.colors.blue[1] : 'transparent',
-                  borderRadius: theme.radius.md,
-                  padding: `${rem(theme.spacing.xs)} ${rem(theme.spacing.lg)}`,
-                  textDecoration: 'none',
-                  opacity: isActive ? 1 : undefined,
-                })}
-              >
-                {label}
-              </NavLink>
-            ))
+            ].map(({ label, to }) => {
+              // Deactivate Problems link when on create/edit problem pages
+              const isOnProblemEditor = location.pathname.startsWith('/problems/') && 
+                                       (location.pathname.includes('/edit') || location.pathname.includes('/new'));
+              const shouldBeActive = to === '/problems' && isOnProblemEditor ? false : undefined;
+              
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) => {
+                    const actuallyActive = shouldBeActive === false ? false : isActive;
+                    return `app-nav-link${actuallyActive ? ' app-nav-link-active' : ''}`;
+                  }}
+                  style={({ isActive }) => {
+                    const actuallyActive = shouldBeActive === false ? false : isActive;
+                    return {
+                      display: 'inline-block',
+                      fontWeight: actuallyActive ? 600 : 400,
+                      color: actuallyActive ? theme.colors.blue[7] : 'var(--mantine-color-text)',
+                      backgroundColor: actuallyActive ? theme.colors.blue[1] : 'transparent',
+                      borderRadius: theme.radius.md,
+                      padding: `${rem(theme.spacing.xs)} ${rem(theme.spacing.lg)}`,
+                      textDecoration: 'none',
+                      opacity: actuallyActive ? 1 : undefined,
+                    };
+                  }}
+                >
+                  {label}
+                </NavLink>
+              );
+            })
             }
           </Group>
 

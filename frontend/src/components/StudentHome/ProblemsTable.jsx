@@ -8,7 +8,7 @@ export default function ProblemsTable({ problems = [], page = 1, pageSize = 25 }
   const { user } = useAuth();
   
   // Check if user has edit permissions (admin or editor role)
-  const canEdit = user?.role === 'admin' || user?.role === 'editor';
+  const canEdit = user?.roles?.includes('admin') || user?.roles?.includes('editor');
 
   // Calculate the starting index based on pagination
   // Formula: (page - 1) * pageSize + idx + 1
