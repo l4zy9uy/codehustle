@@ -7,11 +7,13 @@ import Problems from "./pages/Problems";
 import Courses from "./pages/Courses";
 import Submissions from "./pages/Submissions";
 import Home from "./pages/Home";
+import Contests from "./pages/Contests";
+import ContestDetail from "./pages/ContestDetail";
 import ProfilePage from "./pages/Profile";
 import ProblemPage from "./pages/SingleProblem";
 import CourseDetail from "./pages/CourseDetail";
 import ProblemEditor from "./pages/admin/problems/ProblemEditor";
-import AdminSettings from "./pages/admin/AdminSettings";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 
 // Add mock data for ProfilePage
@@ -38,11 +40,13 @@ export default function App() {
                 <Route path="courses" element={<Courses />} />
                 <Route path="courses/:id" element={<CourseDetail />} />
                 <Route path="submissions" element={<Submissions />} />
+                <Route path="contests" element={<Contests />} />
+                <Route path="contests/:id" element={<ContestDetail />} />
                 {/* Home (Announcements) page */}
                 <Route path="home/*" element={<Home />} />
                 <Route path="problems/new" element={<ProblemEditor />} />
                 <Route path="problems/:id/edit" element={<ProblemEditor />} />
-                <Route path="admin/settings" element={<AdminSettings />} />
+                <Route path="admin" element={<AdminDashboard />} />
                 <Route path="profile" element={
                     <ProfilePage
                         user={mockUser}

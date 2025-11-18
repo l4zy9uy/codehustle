@@ -31,5 +31,5 @@ export const ENV_EXAMPLE = {
   'VITE_GOOGLE_CLIENT_ID': 'your_google_client_id_here',
 
   // Feature Flags
-  'VITE_ENABLE_API_MOCKS': 'false'
+  'VITE_ENABLE_API_MOCKS': 'true'
 };

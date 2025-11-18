@@ -22,6 +22,17 @@ export default function NavBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useMantineTheme();
+  const isAdmin = !!(user?.role === 'admin' || (Array.isArray(user?.roles) && user.roles.includes('admin')));
+  const navLinks = [
+    { label: 'Home', to: '/home' },
+    { label: 'Problems', to: '/problems' },
+    { label: 'Courses', to: '/courses' },
+    { label: 'Contests', to: '/contests' },
+  ];
+
+  if (isAdmin) {
+    navLinks.push({ label: 'Admin', to: '/admin' });
+  }
   return (
     <AppShell.Header withBorder>
       <Container fluid px="md" style={{ height: '100%' }}>
@@ -31,11 +42,7 @@ export default function NavBar() {
               <Image src={logo} alt="CodeHustle Logo" h={theme.spacing['3xl']} fit="contain" />
             </Anchor>
             {/* nav links */}
-            {[
-              { label: 'Home', to: '/home' },
-              { label: 'Problems', to: '/problems' },
-              { label: 'Courses', to: '/courses' },
-            ].map(({ label, to }) => {
+            {navLinks.map(({ label, to }) => {
               // Deactivate Problems link when on create/edit problem pages
               const isOnProblemEditor = location.pathname.startsWith('/problems/') && 
                                        (location.pathname.includes('/edit') || location.pathname.includes('/new'));

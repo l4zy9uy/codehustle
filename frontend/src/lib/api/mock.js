@@ -3,6 +3,8 @@ import api from '../apiClient';
 import {
   announcements,
   courses,
+  contests,
+  contestDetails,
   courseInfo,
   courseProblems,
   problems,
@@ -10,6 +12,7 @@ import {
   mockUser,
   mockStats,
   mockRecentSubmissions,
+  adminDashboard,
 } from './mockData';
 
 export function enableApiMocking() {
@@ -18,6 +21,34 @@ export function enableApiMocking() {
   // Helpers
   const ok = (data = {}, status = 200, headers) => [status, data, headers];
   const noContent = () => [204];
+  let announcementStore = announcements.map((entry) => ({ ...entry }));
+
+  const parseJson = (config) => {
+    try {
+      return JSON.parse(config.data || '{}');
+    } catch (err) {
+      return {};
+    }
+  };
+
+  const normalizeTargets = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
+  };
+
+  const nextAnnouncementId = () => {
+    const currentMax = announcementStore.reduce((max, item) => {
+      const idNum = Number(item.id) || 0;
+      return Math.max(max, idNum);
+    }, 0);
+    return currentMax + 1;
+  };
 
   // Auth: login
   mock.onPost('/auth/login').reply((config) => {
@@ -50,11 +81,60 @@ export function enableApiMocking() {
   mock.onGet('/users/me/recent-submissions').reply(() => ok({ items: mockRecentSubmissions }));
 
   // Announcements
-  mock.onGet('/announcements').reply(() => ok({ items: announcements }));
+  mock.onGet('/announcements').reply(() => ok({ items: announcementStore }));
   mock.onGet(/\/announcements\/\d+$/).reply((config) => {
     const id = Number(config.url.split('/').pop());
-    const item = announcements.find((a) => a.id === id);
+    const item = announcementStore.find((a) => Number(a.id) === id);
     return item ? ok(item) : [404, { message: 'Announcement not found' }];
+  });
+  mock.onPost('/announcements').reply((config) => {
+    const body = parseJson(config);
+    const now = new Date().toISOString();
+    const publishAt = body.publishAt || body.date || now;
+    const newAnnouncement = {
+      id: nextAnnouncementId(),
+      title: body.title || 'Untitled announcement',
+      snippet: body.snippet || '',
+      content: body.content || '',
+      author: body.author || 'Admin',
+      image: body.image || null,
+      status: body.status || 'draft',
+      audience: body.audience || 'global',
+      targets: normalizeTargets(body.targets || body.targetsInput),
+      channels: Array.isArray(body.channels) && body.channels.length ? body.channels : ['web'],
+      pinned: !!body.pinned,
+      date: publishAt,
+      publishAt,
+      updatedAt: now,
+    };
+    announcementStore = [newAnnouncement, ...announcementStore];
+    return ok(newAnnouncement, 201);
+  });
+  mock.onPut(/\/announcements\/\d+$/).reply((config) => {
+    const id = Number(config.url.split('/').pop());
+    const current = announcementStore.find((item) => Number(item.id) === id);
+    if (!current) return [404, { message: 'Announcement not found' }];
+    const body = parseJson(config);
+    const now = new Date().toISOString();
+    const publishAt = body.publishAt || body.date || current.publishAt || current.date || now;
+    const updatedAnnouncement = {
+      ...current,
+      ...body,
+      targets: normalizeTargets(body.targets ?? current.targets),
+      channels: Array.isArray(body.channels) ? body.channels : current.channels,
+      date: publishAt,
+      publishAt,
+      updatedAt: now,
+    };
+    announcementStore = announcementStore.map((item) => (Number(item.id) === id ? updatedAnnouncement : item));
+    return ok(updatedAnnouncement);
+  });
+  mock.onDelete(/\/announcements\/\d+$/).reply((config) => {
+    const id = Number(config.url.split('/').pop());
+    const exists = announcementStore.some((item) => Number(item.id) === id);
+    if (!exists) return [404, { message: 'Announcement not found' }];
+    announcementStore = announcementStore.filter((item) => Number(item.id) !== id);
+    return noContent();
   });
 
   // Courses
@@ -68,6 +148,58 @@ export function enableApiMocking() {
     const id = config.url.split('/')[2];
     const list = courseProblems[id] || [];
     return ok({ items: list });
+  });
+
+  // Contests
+  const formatContest = (contest) => ({
+    id: contest.id,
+    name: contest.name,
+    type: contest.type,
+    format: contest.format,
+    status: contest.status,
+    start_time: contest.startTime,
+    end_time: contest.endTime,
+    time_limit: contest.timeLimitHours,
+    duration: contest.duration,
+    participants: contest.participants,
+    is_mirror: contest.isMirror,
+    tags: contest.tags,
+    short_description: contest.shortDescription,
+  });
+
+  mock.onGet('/contests').reply((config) => {
+    const params = new URLSearchParams(config.params || {});
+    const q = (params.get('q') || '').toLowerCase();
+    const page = parseInt(params.get('page') || '1');
+    const pageSize = parseInt(params.get('page_size') || '50');
+    const filtered = contests.filter((contest) => {
+      if (!q) return true;
+      const haystack = [contest.name, contest.shortDescription, ...(contest.tags || [])]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+    const startIndex = (page - 1) * pageSize;
+    const paginated = filtered.slice(startIndex, startIndex + pageSize).map(formatContest);
+    return ok({ contests: paginated, total: filtered.length, page, page_size: pageSize });
+  });
+
+  mock.onGet(/\/contests\/[^/]+$/).reply((config) => {
+    const id = config.url.split('/').pop();
+    const detail = contestDetails[id];
+    if (!detail) return [404, { message: 'Contest not found' }];
+    return ok({ ...formatContest(detail), rules: detail.rules, prizes: detail.prizes, problems: detail.problems });
+  });
+
+  mock.onGet(/\/contests\/[^/]+\/problems$/).reply((config) => {
+    const id = config.url.split('/')[2];
+    const detail = contestDetails[id];
+    const problemsList = (detail?.problems || []).map((title, index) => ({
+      id: `${id}-p${index + 1}`,
+      title,
+      index: index + 1,
+    }));
+    return ok({ problems: problemsList });
   });
 
   // Problems
@@ -144,6 +276,9 @@ export function enableApiMocking() {
   });
 
   mock.onGet('/tags').reply(() => ok({ items: allTags }));
+
+  // Admin Dashboard
+  mock.onGet('/admin/dashboard').reply(() => ok(adminDashboard));
 
   // Submissions
   mock.onGet('/submissions').reply(() => ok({ items: mockRecentSubmissions }));

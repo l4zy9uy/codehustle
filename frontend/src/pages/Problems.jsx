@@ -78,7 +78,7 @@ export default function Problems(props) {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <Container maw={1024} mx="auto">
+    <>
       <FilterToolbar
         query={query}
         setQuery={setQuery}
@@ -105,6 +105,6 @@ export default function Problems(props) {
           position="center"
         />
       )}
-    </Container>
+    </>
   );
 }

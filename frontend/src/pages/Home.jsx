@@ -4,6 +4,7 @@ import { Text, Group, Select, Pagination, Stack, Skeleton, Card } from '@mantine
 import AnnouncementCard from '../components/AnnouncementCard';
 import AnnouncementDetail from '../components/AnnouncementDetail';
 import { getAnnouncements, getAnnouncement } from '../lib/api/announcements';
+import announcementsData from '../data/announcements';
 
 export default function Home() {
     const navigate = useNavigate();
@@ -16,8 +17,11 @@ export default function Home() {
     useEffect(() => {
       setLoading(true);
       getAnnouncements()
-        .then((res) => setItems(res.items || []))
-        .catch(() => setItems([]))
+        .then((res) => {
+          const list = res?.items || [];
+          setItems(list.length ? list : announcementsData);
+        })
+        .catch(() => setItems(announcementsData))
         .finally(() => setLoading(false));
     }, []);
 
@@ -33,7 +37,7 @@ export default function Home() {
     const end = Math.min(page * itemsPerPage, totalItems);
 
     return (
-        <Stack gap="md" p="md" style={{ maxWidth: 980, width: '100%', margin: '0 auto' }}>
+        <Stack gap="md" p="md" style={{ maxWidth: 1440, width: '100%', margin: '0 auto' }}>
             <Group justify="space-between" align="center">
                 <Text size='huge' fw={600}>
                     Announcements
@@ -109,7 +113,16 @@ function AnnouncementDetailWrapper() {
     const [announcement, setAnnouncement] = useState(null);
     useEffect(() => {
       if (!id) return;
-      getAnnouncement(id).then(setAnnouncement).catch(() => setAnnouncement(null));
+      const fallback = announcementsData.find((item) => String(item.id) === String(id)) || null;
+      getAnnouncement(id)
+        .then((res) => {
+          if (res && Object.keys(res).length) {
+            setAnnouncement(res);
+          } else {
+            setAnnouncement(fallback);
+          }
+        })
+        .catch(() => setAnnouncement(fallback));
     }, [id]);
     if (!announcement) return <Text size="sm" c="dimmed">Loading...</Text>;
     return <AnnouncementDetail announcement={announcement} />;

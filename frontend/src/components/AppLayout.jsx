@@ -9,7 +9,7 @@ export default function AppLayout() {
     <AppShell header={{ height: 48 }}>
       <NavBar />
       <AppShell.Main>
-        <Container size={1440}>
+        <Container size={1440} style={{ marginInline: '24px' }}>
           <Outlet />
         </Container>
       </AppShell.Main>

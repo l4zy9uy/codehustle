@@ -15,26 +15,17 @@ import {
   Divider,
   Grid,
   Badge,
-  ActionIcon,
   Tabs,
-  Table,
-  ScrollArea,
   FileInput,
-  Checkbox,
-  Anchor,
+  ActionIcon,
 } from '@mantine/core';
 import { 
-  IconArrowLeft, 
   IconDeviceFloppy, 
   IconEye, 
   IconFileText,
-  IconCode,
-  IconUpload,
-  IconDownload,
-  IconEdit,
-  IconTrash,
   IconPlus,
-  IconCheck
+  IconTrash,
+  IconUpload,
 } from '@tabler/icons-react';
 import { useAuth } from '../../../context/AuthContext';
 import ReactMarkdown from 'react-markdown';
@@ -60,11 +51,11 @@ const katexOptions = {
 
 // Markdown components for styling
 const mdComponents = {
-  p: ({ node, ...props }) => <Text style={{ marginBottom: '0.5rem' }} {...props} />,
-  h1: ({ node, ...props }) => <Title order={1} style={{ marginTop: '1rem', marginBottom: '0.5rem' }} {...props} />,
-  h2: ({ node, ...props }) => <Title order={2} style={{ marginTop: '1rem', marginBottom: '0.5rem' }} {...props} />,
-  h3: ({ node, ...props }) => <Title order={3} style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }} {...props} />,
-  h4: ({ node, ...props }) => <Title order={4} style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }} {...props} />,
+  p: (props) => <Text style={{ marginBottom: '0.5rem' }} {...props} />,
+  h1: (props) => <Title order={1} style={{ marginTop: '1rem', marginBottom: '0.5rem' }} {...props} />,
+  h2: (props) => <Title order={2} style={{ marginTop: '1rem', marginBottom: '0.5rem' }} {...props} />,
+  h3: (props) => <Title order={3} style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }} {...props} />,
+  h4: (props) => <Title order={4} style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }} {...props} />,
 };
 
 export default function ProblemEditor() {
@@ -94,18 +85,12 @@ export default function ProblemEditor() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [showPreview, setShowPreview] = useState(false);
-
-  // Mock file data
-  const [sourceFiles, setSourceFiles] = useState([
-    { id: 1, name: 'v.cpp', type: 'validator', language: 'cpp.g++17', length: 255, modified: '2025-09-19 08:45:43' },
-    { id: 2, name: 'echo.cpp', type: 'generator', language: 'cpp.g++17', length: 206, modified: '2025-09-19 08:45:43' },
-  ]);
-
-  const [solutionFiles, setSolutionFiles] = useState([
-    { id: 1, name: 'solution.cpp', author: 'admin', language: 'cpp.g++17', length: 437, modified: '2025-08-23 21:13:18', type: 'Main correct solution' },
-  ]);
-
   const [tagInput, setTagInput] = useState('');
+  
+  // Test cases state
+  const [testCases, setTestCases] = useState([
+    { id: 1, inputFile: null, outputFile: null }
+  ]);
 
   useEffect(() => {
     if (isEdit && id) {
@@ -153,16 +138,29 @@ export default function ProblemEditor() {
     }));
   };
 
+  const addTestCase = () => {
+    const newId = testCases.length > 0 ? Math.max(...testCases.map(tc => tc.id)) + 1 : 1;
+    setTestCases(prev => [...prev, { id: newId, inputFile: null, outputFile: null }]);
+  };
+
+  const deleteTestCase = (id) => {
+    setTestCases(prev => prev.filter(tc => tc.id !== id));
+  };
+
+  const updateTestCaseFile = (id, fileType, file) => {
+    setTestCases(prev => prev.map(tc => 
+      tc.id === id ? { ...tc, [fileType]: file } : tc
+    ));
+  };
+
   return (
-    <Container size="xl" py="md">
+    <>
       {/* Auth loading guard and permission message without breaking hooks order */}
       {authLoading && (
         <Text size="sm" c="dimmed">Loading...</Text>
       )}
       {!authLoading && !canEdit && (
-        <Container size="md" py="xl">
-          <Text c="red">You don't have permission to edit problems.</Text>
-        </Container>
+        <Text c="red">You don't have permission to edit problems.</Text>
       )}
       {!authLoading && canEdit && (
       <Stack gap="md">
@@ -183,12 +181,6 @@ export default function ProblemEditor() {
             </Tabs.Tab>
             <Tabs.Tab value="description" leftSection={<IconFileText size={16} />}>
               Description
-            </Tabs.Tab>
-            <Tabs.Tab value="sources" leftSection={<IconCode size={16} />}>
-              Source Files
-            </Tabs.Tab>
-            <Tabs.Tab value="solutions" leftSection={<IconCheck size={16} />}>
-              Solutions
             </Tabs.Tab>
             <Tabs.Tab value="tests" leftSection={<IconFileText size={16} />}>
               Test Cases
@@ -438,182 +430,84 @@ export default function ProblemEditor() {
             </Stack>
           </Tabs.Panel>
 
-          {/* Source Files Tab */}
-          <Tabs.Panel value="sources" pt="md">
-            <Stack gap="md">
-              <Group justify="space-between">
-                <Title order={3}>Source Files</Title>
-                      
-              </Group>
-
-              <Paper withBorder>
-                <ScrollArea>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Name</Table.Th>
-                        <Table.Th>Language</Table.Th>
-                        <Table.Th>Length</Table.Th>
-                        <Table.Th>Modified</Table.Th>
-                        <Table.Th>Actions</Table.Th>
-                        <Table.Th></Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {sourceFiles.map((file) => (
-                        <Table.Tr key={file.id}>
-                          <Table.Td>
-                            <Stack gap={2}>
-                              <Text size="sm">{file.name} {file.type}</Text>
-                              <Anchor size="xs">Rename?</Anchor>
-                            </Stack>
-                          </Table.Td>
-                          <Table.Td>
-                            <Select
-                              data={[
-                                { value: 'cpp.g++17', label: 'cpp.g++17' },
-                                { value: 'python.3', label: 'python.3' },
-                              ]}
-                              value={file.language}
-                              size="xs"
-                            />
-                          </Table.Td>
-                          <Table.Td>{file.length}</Table.Td>
-                          <Table.Td>{file.modified}</Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              <Anchor size="xs">Delete</Anchor>
-                              <Anchor size="xs">Download</Anchor>
-                              <Anchor size="xs">Edit</Anchor>
-                              <Anchor size="xs">View</Anchor>
-                              <Anchor size="xs">Lang</Anchor>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Checkbox />
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </ScrollArea>
-              </Paper>
-
-              <Stack gap="sm">
-                <Text size="sm">
-                  Upload files for generators, validators and checkers (if you need). It is strongly recommended to use testlib in it.
-                </Text>
-                <Text size="sm">
-                  Do not upload solutions here, use solutions tab instead.
-                </Text>
-                      
-                <Text size="sm">
-                  <Anchor>You can read more about generators here.</Anchor>
-                </Text>
-                <Button variant="outline" size="sm">
-                  Check sources for compilability
-                </Button>
-              </Stack>
-            </Stack>
-          </Tabs.Panel>
-
-          {/* Solutions Tab */}
-          <Tabs.Panel value="solutions" pt="md">
-            <Stack gap="md">
-              <Group justify="space-between">
-                <Title order={3}>Solution files</Title>
-                      
-              </Group>
-
-              <Paper withBorder>
-                <ScrollArea>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Author</Table.Th>
-                        <Table.Th>Name</Table.Th>
-                        <Table.Th>Language</Table.Th>
-                        <Table.Th>Length</Table.Th>
-                        <Table.Th>Modified</Table.Th>
-                        <Table.Th>Type</Table.Th>
-                        <Table.Th>Actions</Table.Th>
-                        <Table.Th></Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {solutionFiles.map((file) => (
-                        <Table.Tr key={file.id}>
-                          <Table.Td>{file.author}</Table.Td>
-                          <Table.Td>
-                            <Stack gap={2}>
-                              <Text size="sm">{file.name}</Text>
-                              <Group gap="xs">
-                                <Anchor size="xs">Note</Anchor>
-                                <Anchor size="xs">Rename</Anchor>
-                              </Group>
-                            </Stack>
-                          </Table.Td>
-                          <Table.Td>
-                            <Select
-                              data={[
-                                { value: 'cpp.g++17', label: 'cpp.g++17' },
-                                { value: 'python.3', label: 'python.3' },
-                              ]}
-                              value={file.language}
-                              size="xs"
-                            />
-                          </Table.Td>
-                          <Table.Td>{file.length}</Table.Td>
-                          <Table.Td>{file.modified}</Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              <Text size="sm">{file.type}</Text>
-                              <Anchor size="xs">Change?</Anchor>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              <Anchor size="xs">Delete</Anchor>
-                              <Anchor size="xs">Download</Anchor>
-                              <Anchor size="xs">Edit</Anchor>
-                              <Anchor size="xs">View</Anchor>
-                              <Anchor size="xs">Translate</Anchor>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Checkbox />
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </ScrollArea>
-              </Paper>
-
-              <Stack gap="sm">
-                <Text size="sm">Upload solution files here.</Text>
-                <Text size="sm">
-                  There should be exactly one "Main correct solution" (also known as "model solution"). It will be used to generate jury answers.
-                </Text>
-                <Button variant="outline" size="sm">
-                  Check solutions for compilability
-                </Button>
-              </Stack>
-            </Stack>
-          </Tabs.Panel>
-
           {/* Test Cases Tab */}
           <Tabs.Panel value="tests" pt="md">
             <Stack gap="md">
-              <Title order={3}>Test Cases</Title>
-              <Paper withBorder p="md">
-                <Text c="dimmed">Test cases management will be implemented here.</Text>
-              </Paper>
+              <Group justify="space-between" align="center">
+                <Title order={3}>Test Cases</Title>
+                <Button 
+                  leftSection={<IconPlus size={16} />} 
+                  onClick={addTestCase}
+                  size="sm"
+                  radius="sm"
+                >
+                  Add Test Case
+                </Button>
+              </Group>
+
+              {testCases.length === 0 ? (
+                <Paper withBorder p="md">
+                  <Text c="dimmed" ta="center">No test cases added yet. Click "Add Test Case" to get started.</Text>
+                </Paper>
+              ) : (
+                <Stack gap="sm">
+                  {testCases.map((testCase, index) => (
+                    <Paper key={testCase.id} withBorder p="md">
+                      <Group justify="space-between" align="flex-start" mb="md">
+                        <Title order={5}>Test Case #{index + 1}</Title>
+                        <ActionIcon 
+                          color="red" 
+                          variant="subtle"
+                          onClick={() => deleteTestCase(testCase.id)}
+                          disabled={testCases.length === 1}
+                        >
+                          <IconTrash size={18} />
+                        </ActionIcon>
+                      </Group>
+                      
+                      <Grid>
+                        <Grid.Col span={6}>
+                          <FileInput
+                            label="Input File (.in)"
+                            placeholder="Upload input file"
+                            accept=".in"
+                            leftSection={<IconUpload size={16} />}
+                            value={testCase.inputFile}
+                            onChange={(file) => updateTestCaseFile(testCase.id, 'inputFile', file)}
+                            radius="sm"
+                          />
+                          {testCase.inputFile && (
+                            <Text size="xs" c="dimmed" mt={4}>
+                              {testCase.inputFile.name} ({(testCase.inputFile.size / 1024).toFixed(2)} KB)
+                            </Text>
+                          )}
+                        </Grid.Col>
+                        <Grid.Col span={6}>
+                          <FileInput
+                            label="Output File (.out)"
+                            placeholder="Upload output file"
+                            accept=".out"
+                            leftSection={<IconUpload size={16} />}
+                            value={testCase.outputFile}
+                            onChange={(file) => updateTestCaseFile(testCase.id, 'outputFile', file)}
+                            radius="sm"
+                          />
+                          {testCase.outputFile && (
+                            <Text size="xs" c="dimmed" mt={4}>
+                              {testCase.outputFile.name} ({(testCase.outputFile.size / 1024).toFixed(2)} KB)
+                            </Text>
+                          )}
+                        </Grid.Col>
+                      </Grid>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
             </Stack>
           </Tabs.Panel>
         </Tabs>
-      </Stack>
+        </Stack>
       )}
-    </Container>
+    </>
   );
 }
