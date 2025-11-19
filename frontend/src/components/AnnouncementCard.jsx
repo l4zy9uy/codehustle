@@ -3,8 +3,9 @@ import { Card, Text, Group, Image } from '@mantine/core';
 import { parseISO, format } from 'date-fns';
 
 export default function AnnouncementCard({ announcement, onClick }) {
-    const { title, snippet, date, image } = announcement;
+    const { title, snippet, date, updatedAt, image } = announcement;
     const formattedDate = format(parseISO(date), 'MMM dd, yyyy');
+    const formattedUpdatedAt = updatedAt ? format(parseISO(updatedAt), 'MMM dd, yyyy') : null;
     const [hovered, setHovered] = useState(false);
 
     return (
@@ -30,7 +31,10 @@ export default function AnnouncementCard({ announcement, onClick }) {
                         {title}
                     </Text>
                     <Text size="xs" c="dimmed" mt={4}>
-                        {formattedDate}
+                        Posted {formattedDate}
+                        {formattedUpdatedAt && (
+                            <> • Updated {formattedUpdatedAt}</>
+                        )}
                     </Text>
                     <Text size="sm" c="dimmed" lineClamp={2} mt="xs">
                         {snippet}

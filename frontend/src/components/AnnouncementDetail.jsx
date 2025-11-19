@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 
 // Markdown render components matching DMOJ style
@@ -58,11 +59,12 @@ export default function AnnouncementDetail({ announcement }) {
         return <Text size="sm" c="red">Announcement not found.</Text>;
     }
 
-    const { title, date, author, content, image } = announcement;
+    const { title, date, author, content, image, updatedAt } = announcement;
     
     // Handle author(s) - can be string or array
     const authors = Array.isArray(author) ? author.join(', ') : author;
     const formattedDate = formatDMojDate(date);
+    const formattedUpdatedAt = updatedAt ? formatDMojDate(updatedAt) : null;
 
     return (
         <Stack gap="md" style={{ maxWidth: 1440, width: '100%', margin: '0 auto' }} p="md">
@@ -83,6 +85,7 @@ export default function AnnouncementDetail({ announcement }) {
                 {/* Author and date metadata matching DMOJ format */}
                 <Text size="sm" c="dimmed" mb="md">
                     {authors} posted on {formattedDate}
+                    {formattedUpdatedAt && ` • Last updated on ${formattedUpdatedAt}`}
                 </Text>
                 
                 {/* Content body with markdown rendering */}
@@ -93,7 +96,8 @@ export default function AnnouncementDetail({ announcement }) {
                     <ReactMarkdown
                         components={mdComponents}
                         remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
+                        rehypePlugins={[rehypeKatex, rehypeRaw]}
+                        skipHtml={false}
                     >
                         {content || ''}
                     </ReactMarkdown>
@@ -101,14 +105,6 @@ export default function AnnouncementDetail({ announcement }) {
             </article>
             
             {/* Comments section matching DMOJ structure */}
-            <section style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--mantine-color-gray-3)' }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '1.25em', fontWeight: 600 }}>
-                    Comments
-                </h3>
-                <Text size="sm" c="dimmed">
-                    There are no comments at the moment.
-                </Text>
-            </section>
         </Stack>
     );
 } 

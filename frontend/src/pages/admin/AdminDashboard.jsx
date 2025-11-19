@@ -5,12 +5,14 @@ import {
   Badge,
   Box,
   Button,
+  Accordion,
   Card,
   Divider,
   Grid,
   Group,
   Modal,
   MultiSelect,
+  NumberInput,
   Paper,
   Progress,
   RingProgress,
@@ -25,6 +27,7 @@ import {
   Text,
   TextInput,
   Textarea,
+  PasswordInput,
   ThemeIcon,
   Title,
 } from '@mantine/core';
@@ -53,12 +56,9 @@ import { useNavigate } from 'react-router-dom';
 import { createAnnouncement, deleteAnnouncement, getAnnouncements, updateAnnouncement } from '../../lib/api/announcements';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import '@mantine/tiptap/styles.css';
-import { RichTextEditor, Link as RteLink } from '@mantine/tiptap';
-import { useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Placeholder from '@tiptap/extension-placeholder';
+import { Editor } from '@tinymce/tinymce-react';
+import ContestCreate from './ContestCreate';
+import { notifications } from '@mantine/notifications';
 
 const severityColor = {
   high: 'red',
@@ -123,6 +123,7 @@ const fromInputDateValue = (value) => {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const tinyMceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -131,17 +132,35 @@ export default function AdminDashboard() {
     { id: 'admin-overview', label: 'Overview', description: 'Platform pulse and headline metrics.' },
     { id: 'admin-moderation', label: 'Moderation queue', description: 'Investigate reports and requests.' },
     { id: 'admin-judge', label: 'Judge & cohorts', description: 'Track infrastructure load and onboarding.' },
-    { id: 'admin-contests', label: 'Contest ops', description: 'Monitor live contests and scoreboard freezes.' },
+    { id: 'admin-contests', label: 'Contests', description: 'Monitor and launch programming contests.' },
     { id: 'admin-announcements', label: 'Announcements', description: 'Compose, schedule, and pin broadcast notices.' },
+    { id: 'admin-settings', label: 'Settings', description: 'SMTP and web configuration.' },
     { id: 'admin-usage', label: 'Usage by track', description: 'See where learners spend time.' },
     { id: 'admin-access', label: 'Access requests', description: 'Handle organization and lecturer access.' },
     { id: 'admin-problems', label: 'Problem pipeline', description: 'Review author handoffs before publishing.' },
     { id: 'admin-submissions', label: 'Submission feed', description: 'Watch latest verdicts for judging issues.' },
-    { id: 'admin-bulk', label: 'Bulk import', description: 'Upload CSV rosters and download generated credentials.' },
+    { id: 'admin-bulk', label: 'Users', description: 'Manage roster imports and temporary account generation.' },
     { id: 'admin-activity', label: 'Recent activity', description: 'Audit latest admin actions.' },
     { id: 'admin-quick-actions', label: 'Quick actions', description: 'Shortcuts for common workflows.' },
   ]), []);
-  const [activeSection, setActiveSection] = useState('admin-overview');
+
+  const sectionSubsections = useMemo(() => ({
+    'admin-overview': ['Metrics', 'Trends'],
+    'admin-moderation': ['Reports', 'Requests'],
+    'admin-judge': ['Load', 'Onboarding'],
+    'admin-contests': ['Contest list', 'Create contest'],
+    'admin-announcements': ['Announcement list', 'Create announcement'],
+    'admin-settings': ['SMTP Config', 'Web Config'],
+    'admin-usage': ['Tracks', 'Engagement'],
+    'admin-access': ['Organizations', 'Lecturers'],
+    'admin-problems': ['Pipeline', 'Publishing'],
+    'admin-submissions': ['Verdicts', 'Issues'],
+    'admin-bulk': ['Import users', 'Generate users'],
+    'admin-activity': ['Audit log'],
+    'admin-quick-actions': ['Shortcuts'],
+  }), []);
+  const [openParentSection, setOpenParentSection] = useState(null);
+  const [activeChildSection, setActiveChildSection] = useState(null);
   const [announcementsItems, setAnnouncementsItems] = useState([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
   const [announcementsError, setAnnouncementsError] = useState(null);
@@ -152,6 +171,27 @@ export default function AdminDashboard() {
   const [composerSaving, setComposerSaving] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [composerValues, setComposerValues] = useState(defaultAnnouncementForm);
+  const [smtpConfig, setSmtpConfig] = useState({
+    server: '',
+    port: '25',
+    email: '',
+    password: '',
+    tls: false,
+  });
+  const [webConfig, setWebConfig] = useState({
+    baseUrl: '',
+    name: '',
+    shortcut: '',
+    footer: '',
+    allowRegister: true,
+    submissionShowAll: true,
+  });
+  const [generateUsersForm, setGenerateUsersForm] = useState({
+    count: 10,
+    prefix: 'student',
+    role: 'learner',
+    expiresAt: '',
+  });
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
@@ -198,6 +238,14 @@ export default function AdminDashboard() {
     anchor.click();
     URL.revokeObjectURL(url);
   }, []);
+
+  const handleGenerateUsers = useCallback(() => {
+    notifications.show({
+      title: 'Generation queued',
+      message: `${generateUsersForm.count} ${generateUsersForm.role} account(s) will use prefix "${generateUsersForm.prefix}".`,
+      color: 'teal',
+    });
+  }, [generateUsersForm]);
 
   const lastUpdatedText = useMemo(() => {
     if (!refreshedAt) return 'Never';
@@ -346,26 +394,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      RteLink,
-      Placeholder.configure({ placeholder: 'Write an announcement... Use the toolbar for formatting.' }),
-    ],
-    content: composerValues.content || '',
-    onUpdate: ({ editor: ed }) => {
-      setComposerValues((prev) => ({ ...prev, content: ed.getHTML() }));
-    },
-  });
+  const handleContentChange = useCallback((content) => {
+    setComposerValues((prev) => ({ ...prev, content }));
+  }, []);
 
-  useEffect(() => {
-    if (editor && composerOpen) {
-      editor.commands.setContent(composerValues.content || '', false);
-    }
-  }, [composerOpen, composerValues.content, editor]);
-
-  const handleComposerSubmit = async () => {
+  const handleComposerSubmit = async ({ onSuccess } = {}) => {
     setComposerSaving(true);
     const parsedTargets = composerValues.targetsInput
       ? composerValues.targetsInput.split(',').map((item) => item.trim()).filter(Boolean)
@@ -392,6 +425,9 @@ export default function AdminDashboard() {
         setAnnouncementsItems((prev) => [saved, ...prev]);
       }
       setSelectedAnnouncement(saved);
+      if (typeof onSuccess === 'function') {
+        onSuccess(saved);
+      }
       setComposerOpen(false);
       resetComposer();
     } catch (err) {
@@ -405,6 +441,17 @@ export default function AdminDashboard() {
     setComposerOpen(false);
     resetComposer();
   };
+
+  const handleSaveSmtp = useCallback(() => {
+    // TODO: wire up backend call
+    // placeholder to avoid unused state warnings
+    console.log('Saving SMTP config', smtpConfig);
+  }, [smtpConfig]);
+
+  const handleSaveWeb = useCallback(() => {
+    // TODO: wire up backend call
+    console.log('Saving web config', webConfig);
+  }, [webConfig]);
 
   const renderOverview = () => (
     <Stack gap="lg">
@@ -633,7 +680,17 @@ export default function AdminDashboard() {
     </Stack>
   );
 
-  const renderAnnouncements = () => (
+  const renderContestCreate = () => (
+    <ContestCreate
+      embedded
+      onSuccess={() => {
+        setOpenParentSection('admin-contests');
+      setActiveChildSection('admin-contests::Contest list');
+      }}
+    />
+  );
+
+  const renderAnnouncementsList = () => (
     <Stack gap="lg">
       <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
         <Group gap="xs">
@@ -641,8 +698,8 @@ export default function AdminDashboard() {
             <IconSpeakerphone size={16} />
           </ThemeIcon>
           <Stack gap={2}>
-            <Text fw={600}>Announcement composer</Text>
-            <Text size="sm" c="dimmed">Draft, schedule, and pin updates that appear on the learner dashboard.</Text>
+            <Text fw={600}>Announcements</Text>
+            <Text size="sm" c="dimmed">Review, filter, and manage broadcast updates.</Text>
           </Stack>
         </Group>
         <Group gap="xs">
@@ -655,8 +712,15 @@ export default function AdminDashboard() {
           >
             Refresh
           </Button>
-          <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => openComposer()}>
-            Compose
+          <Button
+            size="xs"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => {
+              setOpenParentSection('admin-announcements');
+              setActiveChildSection('admin-announcements::Create announcement');
+            }}
+          >
+            New announcement
           </Button>
         </Group>
       </Group>
@@ -908,11 +972,10 @@ export default function AdminDashboard() {
           </Paper>
         </Grid.Col>
       </Grid>
-
       <Modal
         opened={composerOpen}
         onClose={handleComposerClose}
-        title={editingAnnouncement ? 'Edit announcement' : 'Compose announcement'}
+        title="Edit announcement"
         size="lg"
         centered
       >
@@ -949,34 +1012,19 @@ export default function AdminDashboard() {
           <Stack gap="xs">
             <div style={{ flex: 1 }}>
               <Text size="xs" c="dimmed" mb={4}>Rich text</Text>
-              {editor ? (
-                <RichTextEditor editor={editor} style={{ zIndex: 2 }}>
-                  <RichTextEditor.Toolbar sticky stickyOffset={4}>
-                    <RichTextEditor.ControlsGroup>
-                      <RichTextEditor.Bold />
-                      <RichTextEditor.Italic />
-                      <RichTextEditor.Underline />
-                      <RichTextEditor.Strikethrough />
-                    </RichTextEditor.ControlsGroup>
-                    <RichTextEditor.ControlsGroup>
-                      <RichTextEditor.H1 />
-                      <RichTextEditor.H2 />
-                      <RichTextEditor.H3 />
-                    </RichTextEditor.ControlsGroup>
-                    <RichTextEditor.ControlsGroup>
-                      <RichTextEditor.BulletList />
-                      <RichTextEditor.OrderedList />
-                    </RichTextEditor.ControlsGroup>
-                    <RichTextEditor.ControlsGroup>
-                      <RichTextEditor.Link />
-                      <RichTextEditor.Unlink />
-                    </RichTextEditor.ControlsGroup>
-                  </RichTextEditor.Toolbar>
-                  <RichTextEditor.Content mih={260} />
-                </RichTextEditor>
-              ) : (
-                <Skeleton height={300} radius="md" />
-              )}
+              <Editor
+                apiKey={tinyMceApiKey}
+                value={composerValues.content}
+                onEditorChange={handleContentChange}
+                init={{
+                  height: 320,
+                  menubar: false,
+                  branding: false,
+                  plugins: 'lists link code table',
+                  toolbar: 'undo redo | bold italic underline | bullist numlist | link | code',
+                  placeholder: 'Write an announcement... Use the toolbar for formatting.',
+                }}
+              />
             </div>
             <Paper withBorder radius="md" p="sm" bg="var(--mantine-color-gray-0)">
               <Text size="sm" fw={600} mb={6}>Live preview</Text>
@@ -1028,6 +1076,146 @@ export default function AdminDashboard() {
           </Group>
         </Stack>
       </Modal>
+    </Stack>
+  );
+
+  const renderAnnouncementCreate = () => (
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-start" wrap="wrap">
+        <Stack gap={2}>
+          <Text fw={600}>Create announcement</Text>
+          <Text size="sm" c="dimmed">Draft a new broadcast, schedule it, and choose where it appears.</Text>
+        </Stack>
+        <Button
+          size="xs"
+          variant="default"
+          onClick={() => {
+            setOpenParentSection('admin-announcements');
+            setActiveChildSection('admin-announcements::Announcement list');
+          }}
+        >
+          Back to list
+        </Button>
+      </Group>
+      <Paper withBorder radius="md" p="md">
+        <Stack gap="sm">
+          <Group justify="space-between" align="flex-start" wrap="wrap">
+            <Text fw={600}>Announcement details</Text>
+            <Text size="xs" c="dimmed">Fields marked with * are required.</Text>
+          </Group>
+          <TextInput
+            label="Title"
+            value={composerValues.title}
+            onChange={(event) => setComposerValues((prev) => ({ ...prev, title: event.currentTarget.value }))}
+            required
+          />
+          <Group grow>
+            <TextInput
+              label="Author"
+              value={composerValues.author}
+              onChange={(event) => setComposerValues((prev) => ({ ...prev, author: event.currentTarget.value }))}
+            />
+            <Select
+              label="Status"
+              data={[
+                { value: 'draft', label: 'Draft' },
+                { value: 'scheduled', label: 'Scheduled' },
+                { value: 'published', label: 'Published' },
+              ]}
+              value={composerValues.status || 'draft'}
+              onChange={(value) => setComposerValues((prev) => ({ ...prev, status: value || 'draft' }))}
+            />
+          </Group>
+          <TextInput
+            label="Snippet"
+            description="Short summary that appears on the feed."
+            value={composerValues.snippet}
+            onChange={(event) => setComposerValues((prev) => ({ ...prev, snippet: event.currentTarget.value }))}
+          />
+          <Stack gap="xs">
+            <div style={{ flex: 1 }}>
+              <Text size="xs" c="dimmed" mb={4}>Rich text</Text>
+              <Editor
+                apiKey={tinyMceApiKey}
+                value={composerValues.content}
+                onEditorChange={handleContentChange}
+                init={{
+                  height: 320,
+                  menubar: false,
+                  branding: false,
+                  plugins: 'lists link code table',
+                  toolbar: 'undo redo | bold italic underline | bullist numlist | link | code',
+                  placeholder: 'Write an announcement... Use the toolbar for formatting.',
+                }}
+              />
+            </div>
+            <Paper withBorder radius="md" p="sm" bg="var(--mantine-color-gray-0)">
+              <Text size="sm" fw={600} mb={6}>Live preview</Text>
+              <div dangerouslySetInnerHTML={{ __html: composerValues.content || '<em>Start typing to preview...</em>' }} />
+            </Paper>
+          </Stack>
+          <Group grow>
+            <Select
+              label="Audience"
+              data={audienceOptions}
+              value={composerValues.audience}
+              onChange={(value) => setComposerValues((prev) => ({ ...prev, audience: value || 'global' }))}
+            />
+            <TextInput
+              label="Targets"
+              description="Comma separated (e.g., CS301, ICPC Elite)"
+              value={composerValues.targetsInput}
+              onChange={(event) => setComposerValues((prev) => ({ ...prev, targetsInput: event.currentTarget.value }))}
+            />
+          </Group>
+          <MultiSelect
+            label="Channels"
+            data={channelOptions}
+            value={composerValues.channels || []}
+            onChange={(value) => setComposerValues((prev) => ({ ...prev, channels: value }))}
+            searchable
+          />
+          <Group grow>
+            <TextInput
+              label="Publish at"
+              type="datetime-local"
+              value={composerValues.publishAt}
+              onChange={(event) => setComposerValues((prev) => ({ ...prev, publishAt: event.currentTarget.value }))}
+            />
+            <Switch
+              label="Pin to dashboard"
+              checked={composerValues.pinned}
+              onChange={(event) => setComposerValues((prev) => ({ ...prev, pinned: event.currentTarget.checked }))}
+              mt="lg"
+            />
+          </Group>
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="default"
+              onClick={() => {
+                resetComposer();
+                setOpenParentSection('admin-announcements');
+                setActiveChildSection('admin-announcements::Announcement list');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() =>
+                handleComposerSubmit({
+                  onSuccess: () => {
+                    setOpenParentSection('admin-announcements');
+                    setActiveChildSection('admin-announcements::Announcement list');
+                  },
+                })
+              }
+              loading={composerSaving}
+            >
+              Save announcement
+            </Button>
+          </Group>
+        </Stack>
+      </Paper>
     </Stack>
   );
 
@@ -1158,11 +1346,11 @@ export default function AdminDashboard() {
     </Paper>
   );
 
-  const renderBulkImport = () => (
+  const renderUserImport = () => (
     <Paper withBorder radius="md" p="md">
       <Stack gap="md">
         <div>
-          <Text fw={600}>Bulk account import</Text>
+          <Text fw={600}>Import user roster</Text>
           <Text size="sm" c="dimmed">Upload CSV rosters, map fields, and distribute generated credentials.</Text>
         </div>
         <Stack gap={6}>
@@ -1186,6 +1374,68 @@ export default function AdminDashboard() {
           </Button>
         </Group>
         <Text size="xs" c="dimmed">Advanced options like contest scoping live in Admin Settings.</Text>
+      </Stack>
+    </Paper>
+  );
+
+  const renderUserGenerate = () => (
+    <Paper withBorder radius="md" p="md">
+      <Stack gap="md">
+        <div>
+          <Text fw={600}>Generate temporary users</Text>
+          <Text size="sm" c="dimmed">Create short-lived accounts for contests, labs, or onboarding drills.</Text>
+        </div>
+        <Group grow align="flex-end">
+          <NumberInput
+            label="Quantity"
+            min={1}
+            max={500}
+            value={generateUsersForm.count}
+            onChange={(value) =>
+              setGenerateUsersForm((prev) => ({ ...prev, count: Number(value) || 0 }))
+            }
+          />
+          <TextInput
+            label="Handle prefix"
+            placeholder="student"
+            value={generateUsersForm.prefix}
+            onChange={(event) =>
+              setGenerateUsersForm((prev) => ({ ...prev, prefix: event.currentTarget.value }))
+            }
+          />
+          <Select
+            label="Role"
+            data={[
+              { value: 'learner', label: 'Learner' },
+              { value: 'coach', label: 'Coach' },
+              { value: 'judge', label: 'Judge' },
+            ]}
+            value={generateUsersForm.role}
+            onChange={(value) =>
+              setGenerateUsersForm((prev) => ({ ...prev, role: value || 'learner' }))
+            }
+          />
+        </Group>
+        <TextInput
+          label="Expires on"
+          type="date"
+          value={generateUsersForm.expiresAt}
+          onChange={(event) =>
+            setGenerateUsersForm((prev) => ({ ...prev, expiresAt: event.currentTarget.value }))
+          }
+          description="Optional automatic deactivation date."
+        />
+        <Group gap="sm">
+          <Button leftSection={<IconSparkles size={16} />} onClick={handleGenerateUsers}>
+            Generate list
+          </Button>
+          <Button variant="light">Download credentials</Button>
+        </Group>
+        <Alert color="yellow" variant="light">
+          <Text size="sm">
+            These accounts are mock placeholders. Wire up the admin API to persist them in your backend.
+          </Text>
+        </Alert>
       </Stack>
     </Paper>
   );
@@ -1243,16 +1493,143 @@ export default function AdminDashboard() {
     </Paper>
   );
 
+  const renderSettings = () => (
+    <Stack gap="lg">
+      <Card withBorder shadow="sm" radius="md" p="md">
+        <Stack gap="md">
+          <Title order={4}>SMTP Config</Title>
+          <Group grow align="flex-start">
+            <TextInput
+              label="Server"
+              required
+              value={smtpConfig.server}
+              onChange={(e) => setSmtpConfig((prev) => ({ ...prev, server: e.currentTarget.value }))}
+              placeholder="smtp.example.com"
+            />
+            <TextInput
+              label="Port"
+              required
+              value={smtpConfig.port}
+              onChange={(e) => setSmtpConfig((prev) => ({ ...prev, port: e.currentTarget.value }))}
+              placeholder="25"
+            />
+          </Group>
+          <Group grow align="flex-start">
+            <TextInput
+              label="Email"
+              required
+              value={smtpConfig.email}
+              onChange={(e) => setSmtpConfig((prev) => ({ ...prev, email: e.currentTarget.value }))}
+              placeholder="email@example.com"
+            />
+            <PasswordInput
+              label="Password"
+              required
+              value={smtpConfig.password}
+              onChange={(e) => setSmtpConfig((prev) => ({ ...prev, password: e.currentTarget.value }))}
+              placeholder="SMTP Server Password"
+            />
+          </Group>
+          <Switch
+            label="TLS"
+            checked={smtpConfig.tls}
+            onChange={(e) => setSmtpConfig((prev) => ({ ...prev, tls: e.currentTarget.checked }))}
+          />
+          <Button onClick={handleSaveSmtp} leftSection={<IconSend size={16} />} maw={120}>
+            Save
+          </Button>
+        </Stack>
+      </Card>
+
+      <Card withBorder shadow="sm" radius="md" p="md">
+        <Stack gap="md">
+          <Title order={4}>Web Config</Title>
+          <Group grow align="flex-start">
+            <TextInput
+              label="Base Url"
+              required
+              value={webConfig.baseUrl}
+              onChange={(e) => setWebConfig((prev) => ({ ...prev, baseUrl: e.currentTarget.value }))}
+              placeholder="http://127.0.0.1"
+            />
+            <TextInput
+              label="Name"
+              required
+              value={webConfig.name}
+              onChange={(e) => setWebConfig((prev) => ({ ...prev, name: e.currentTarget.value }))}
+              placeholder="Online Judge"
+            />
+            <TextInput
+              label="Shortcut"
+              required
+              value={webConfig.shortcut}
+              onChange={(e) => setWebConfig((prev) => ({ ...prev, shortcut: e.currentTarget.value }))}
+              placeholder="oj"
+            />
+          </Group>
+          <Textarea
+            label="Footer"
+            required
+            minRows={2}
+            value={webConfig.footer}
+            onChange={(e) => setWebConfig((prev) => ({ ...prev, footer: e.currentTarget.value }))}
+            placeholder="Online Judge Footer"
+          />
+          <Group grow>
+            <Switch
+              label="Allow Register"
+              checked={webConfig.allowRegister}
+              onChange={(e) => setWebConfig((prev) => ({ ...prev, allowRegister: e.currentTarget.checked }))}
+            />
+            <Switch
+              label="Submission List Show All"
+              checked={webConfig.submissionShowAll}
+              onChange={(e) => setWebConfig((prev) => ({ ...prev, submissionShowAll: e.currentTarget.checked }))}
+            />
+          </Group>
+          <Button onClick={handleSaveWeb} leftSection={<IconSend size={16} />} maw={120}>
+            Save
+          </Button>
+        </Stack>
+      </Card>
+    </Stack>
+  );
+
+  const activeParentId = activeChildSection ? activeChildSection.split('::')[0] : null;
+  const activeChildLabel = activeChildSection ? activeChildSection.split('::')[1] : null;
+
+  useEffect(() => {
+    if (activeParentId === 'admin-announcements' && activeChildLabel === 'Create announcement') {
+      resetComposer();
+    }
+  }, [activeParentId, activeChildLabel]);
+
   const renderSectionContent = () => {
-    switch (activeSection) {
+    if (!activeParentId) {
+      return (
+        <Stack align="center" justify="center" gap="xs" style={{ minHeight: 220 }}>
+          <ThemeIcon size="xl" radius="xl" variant="light" color="gray">
+            <IconArrowsSort size={22} />
+          </ThemeIcon>
+          <Text c="dimmed" size="sm">Select a subsection from the left panel to display its tools.</Text>
+        </Stack>
+      );
+    }
+    switch (activeParentId) {
       case 'admin-moderation':
         return renderModeration();
       case 'admin-judge':
         return renderJudge();
       case 'admin-contests':
-        return renderContests();
+        return activeChildLabel === 'Create contest'
+          ? renderContestCreate()
+          : renderContests();
       case 'admin-announcements':
-        return renderAnnouncements();
+        return activeChildLabel === 'Create announcement'
+          ? renderAnnouncementCreate()
+          : renderAnnouncementsList();
+      case 'admin-settings':
+        return renderSettings();
       case 'admin-usage':
         return renderUsage();
       case 'admin-access':
@@ -1266,14 +1643,16 @@ export default function AdminDashboard() {
       case 'admin-quick-actions':
         return renderQuickActions();
       case 'admin-bulk':
-        return renderBulkImport();
+        return activeChildLabel === 'Generate users'
+          ? renderUserGenerate()
+          : renderUserImport();
       case 'admin-overview':
       default:
         return renderOverview();
     }
   };
 
-  const activeMeta = sectionLinks.find((section) => section.id === activeSection);
+  const activeMeta = sectionLinks.find((section) => section.id === activeParentId);
 
   return (
     <Box
@@ -1301,21 +1680,67 @@ export default function AdminDashboard() {
           <Grid.Col span={{ base: 12, md: 3 }} style={{ display: 'flex' }}>
             <Paper withBorder radius="md" p="md" style={{ flex: 1, height: '100%' }}>
               <Stack gap="xs">
-                <Text size="sm" fw={600}>Sections</Text>
-                {sectionLinks.map((section) => (
-                  <Button
-                    key={section.id}
-                    variant={activeSection === section.id ? 'light' : 'subtle'}
-                    color="blue"
-                    fullWidth
-                    size="compact-sm"
-                    justify="space-between"
-                    rightSection={<IconChevronRight size={14} />}
-                    onClick={() => setActiveSection(section.id)}
-                  >
-                    {section.label}
-                  </Button>
-                ))}
+                <Accordion
+                  chevronPosition="right"
+                  multiple={false}
+                  value={openParentSection}
+                  onChange={(value) => setOpenParentSection(value)}
+                >
+                  {sectionLinks.map((section) => (
+                    <Accordion.Item key={section.id} value={section.id}>
+                      <Accordion.Control
+                        styles={{
+                          root: { justifyContent: 'flex-start', textAlign: 'left' },
+                          label: { justifyContent: 'flex-start', textAlign: 'left', width: '100%' },
+                        }}
+                      >
+                        <Text fw={500} size="md" style={{ width: '100%', textAlign: 'left' }}>
+                          {section.label}
+                        </Text>
+                      </Accordion.Control>
+                      <Accordion.Panel>
+                        <Stack gap="xs">
+                          <Stack gap={4}>
+                            {(sectionSubsections[section.id] || ['Details']).map((sub) => {
+                              const childValue = `${section.id}::${sub}`;
+                              const isActive = activeChildSection === childValue;
+                              return (
+                                <Button
+                                  key={sub}
+                                  variant={isActive ? 'light' : 'subtle'}
+                                  size="xs"
+                                  fullWidth
+                                  styles={{
+                                    root: {
+                                      borderRadius: 0,
+                                      justifyContent: 'flex-start',
+                                      paddingInline: 0,
+                                    },
+                                    inner: {
+                                      justifyContent: 'flex-start',
+                                      width: '100%',
+                                    },
+                                    label: {
+                                      fontSize: '0.95rem',
+                                      fontWeight: 100,
+                                      justifyContent: 'flex-start',
+                                    },
+                                  }}
+                                  onClick={() => {
+                                    setOpenParentSection(section.id);
+                                    setActiveChildSection(childValue);
+                                  }}
+                                >
+                                  {sub}
+                                </Button>
+                              );
+                            })}
+                          </Stack>
+                        </Stack>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                  ))}
+                </Accordion>
               </Stack>
             </Paper>
           </Grid.Col>
@@ -1328,8 +1753,16 @@ export default function AdminDashboard() {
             >
               <Stack gap="sm" style={{ flex: 1 }}>
                 <div>
-                  <Text fw={700}>{activeMeta?.label}</Text>
-                  {activeMeta?.description && (
+                  <Group gap={4}>
+                    <Text fw={700}>{activeMeta?.label || 'Select a section'}</Text>
+                    {activeChildLabel && (
+                      <>
+                        <Text c="dimmed">/</Text>
+                        <Text fw={600}>{activeChildLabel}</Text>
+                      </>
+                    )}
+                  </Group>
+                  {(activeMeta?.description && activeParentId) && (
                     <Text size="sm" c="dimmed">{activeMeta.description}</Text>
                   )}
                 </div>

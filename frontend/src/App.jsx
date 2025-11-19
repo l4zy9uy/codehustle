@@ -14,6 +14,7 @@ import ProblemPage from "./pages/SingleProblem";
 import CourseDetail from "./pages/CourseDetail";
 import ProblemEditor from "./pages/admin/problems/ProblemEditor";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import ContestCreate from "./pages/admin/ContestCreate";
 import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 
 // Add mock data for ProfilePage
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="submissions" element={<Submissions />} />
                 <Route path="contests" element={<Contests />} />
                 <Route path="contests/:id" element={<ContestDetail />} />
+                <Route path="contests/new" element={<ContestCreate />} />
                 {/* Home (Announcements) page */}
                 <Route path="home/*" element={<Home />} />
                 <Route path="problems/new" element={<ProblemEditor />} />
