@@ -21,7 +21,7 @@ This guide covers deploying CodeHustle to production.
 2. **Create production environment file**:
    ```bash
    cp .env.example .env
-   # Edit .env with your production values
+   # Edit .env with your production values (or pull them from your secret store)
    ```
 
 3. **Deploy**:
@@ -33,7 +33,7 @@ This guide covers deploying CodeHustle to production.
 
 ### 1. Environment Configuration
 
-Create a `.env` file in the `backend/` directory with production values:
+Create a `.env` file in the `backend/` directory with production values (copy from `.env.example` as a template). Keep the real values in your secret manager and inject them during deployment:
 
 ```env
 ENV=production
@@ -61,6 +61,13 @@ LOG_FORMAT=json
 ```bash
 openssl rand -base64 32
 ```
+
+### Secret Management
+
+- **GitHub Actions**: Store production values as encrypted repository or organization secrets. Workflows can reference them via `${{ secrets.YOUR_KEY }}` so credentials never live in git history.
+- **DigitalOcean**: Mirror the same keys as App Platform config vars, Droplet metadata, or Kubernetes secrets so the platform injects them at runtime.
+- **Developers**: Copy `.env.example` → `.env` locally and pull the sensitive values from the approved vault/password manager. Never commit `.env`; the root `.gitignore` keeps it untracked.
+- **Rotation**: When secrets change, update both GitHub and DigitalOcean stores and refresh `.env.example` if new keys are needed.
 
 ### 2. Build and Start Services
 
@@ -236,7 +243,6 @@ Check resource usage:
 ```bash
 docker stats
 ```
-
 
 
 
