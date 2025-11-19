@@ -593,20 +593,8 @@ export default function AdminDashboard() {
               audienceOptions={audienceOptions}
               channelOptions={channelOptions}
               handleContentChange={handleContentChange}
-              handleComposerSubmit={() =>
-                handleComposerSubmit({
-                  onSuccess: () => {
-                    setOpenParentSection('admin-announcements');
-                    setActiveChildSection('admin-announcements::Announcement list');
-                  },
-                })
-              }
+              handleComposerSubmit={() => handleComposerSubmit()}
               composerSaving={composerSaving}
-              onCancel={() => {
-                resetComposer();
-                setOpenParentSection('admin-announcements');
-                setActiveChildSection('admin-announcements::Announcement list');
-              }}
             />
           );
         }
