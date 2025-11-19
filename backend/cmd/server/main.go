@@ -43,6 +43,11 @@ func main() {
 		panic(fmt.Sprintf("failed to initialize Redis: %v", err))
 	}
 
+	// Set Gin mode based on environment
+	if config.Get("ENV") == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	r := gin.Default()
 
 	// CORS middleware

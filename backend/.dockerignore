@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Build artifacts
+main
+server
+judge-worker
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment files (use .env in production)
+.env.local
+.env.development
+
+# Piston data (large, mounted as volume)
+piston-data/
+
+# Scripts (not needed in container)
+scripts/
+tools/
+
+# Temporary files
+*.tmp
+*.bak
+.DS_Store
+
+
+
+
+
+
+

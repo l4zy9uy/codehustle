@@ -1,8 +1,19 @@
-# HTTP origin behind the tunnel (intended)
-http://app.codehustle.space {
-    respond "Codehustle app is coming soon." 200
+# Frontend app
+app.codehustle.space {
+    reverse_proxy frontend:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 
-http://api.codehustle.space {
-    respond "API is coming soon." 200
+# API endpoint
+api.codehustle.space {
+    reverse_proxy backend:8081 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }

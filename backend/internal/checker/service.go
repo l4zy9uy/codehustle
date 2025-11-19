@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"codehustle/backend/internal/config"
+	"codehustle/backend/internal/pistonlog"
 	"codehustle/backend/internal/storage"
 
 	"github.com/sirupsen/logrus"
@@ -180,6 +181,12 @@ func (s *Service) Check(req CheckRequest) (*CheckResponse, error) {
 		"version":      pistonVersion,
 	}).Debug("Calling Piston to compile and run checker")
 
+	// Log request to file
+	pistonlog.LogRequest(execURL, payload, map[string]interface{}{
+		"checker_path": req.CheckerPath,
+		"type":         "checker",
+	})
+
 	httpReq, err := http.NewRequest(http.MethodPost, execURL, strings.NewReader(string(body)))
 	if err != nil {
 		return &CheckResponse{
@@ -192,6 +199,10 @@ func (s *Service) Check(req CheckRequest) (*CheckResponse, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
+		pistonlog.LogError(execURL, err, map[string]interface{}{
+			"checker_path": req.CheckerPath,
+			"type":         "checker",
+		})
 		return &CheckResponse{
 			Accepted: false,
 			Error:    fmt.Sprintf("piston execution error: %v", err),
@@ -206,6 +217,12 @@ func (s *Service) Check(req CheckRequest) (*CheckResponse, error) {
 			Error:    fmt.Sprintf("failed to read response: %v", err),
 		}, nil
 	}
+
+	// Log response to file
+	pistonlog.LogResponse(execURL, resp.StatusCode, respBody, map[string]interface{}{
+		"checker_path": req.CheckerPath,
+		"type":         "checker",
+	})
 
 	// Parse Piston response
 	var pistonResult struct {

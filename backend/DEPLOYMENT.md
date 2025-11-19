@@ -1,0 +1,245 @@
+# Deployment Guide
+
+This guide covers deploying CodeHustle to production.
+
+## Prerequisites
+
+- Docker and Docker Compose installed
+- Production server with sufficient resources
+- Domain names configured (app.codehustle.space, api.codehustle.space)
+- Cloudflare tunnel token (if using Cloudflare Tunnel)
+- Google OAuth credentials
+
+## Quick Start
+
+1. **Clone the repository** on your production server:
+   ```bash
+   git clone <your-repo-url>
+   cd codehustle/backend
+   ```
+
+2. **Create production environment file**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your production values
+   ```
+
+3. **Deploy**:
+   ```bash
+   ./deploy.sh
+   ```
+
+## Manual Deployment Steps
+
+### 1. Environment Configuration
+
+Create a `.env` file in the `backend/` directory with production values:
+
+```env
+ENV=production
+JWT_SECRET=<generate-strong-random-secret>
+DB_NAME=codehustle
+DB_USER=app
+DB_PASSWORD=<strong-password>
+MYSQL_ROOT_PASSWORD=<strong-root-password>
+MINIO_ROOT_USER=<minio-user>
+MINIO_ROOT_PASSWORD=<strong-minio-password>
+REDIS_PASSWORD=<optional-redis-password>
+FRONTEND_URL=https://app.codehustle.space
+GOOGLE_CLIENT_ID=<your-client-id>
+GOOGLE_CLIENT_SECRET=<your-client-secret>
+GOOGLE_REDIRECT_URI=https://api.codehustle.space/api/v1/auth/google/callback
+VITE_API_BASE_URL=/api
+VITE_API_HOST=https://api.codehustle.space
+VITE_GOOGLE_CLIENT_ID=<your-client-id>
+TUNNEL_TOKEN=<cloudflare-tunnel-token>
+LOG_LEVEL=info
+LOG_FORMAT=json
+```
+
+**Important**: Generate a strong JWT_SECRET:
+```bash
+openssl rand -base64 32
+```
+
+### 2. Build and Start Services
+
+```bash
+cd backend
+docker-compose build
+docker-compose up -d
+```
+
+### 3. Verify Deployment
+
+Check service status:
+```bash
+docker-compose ps
+```
+
+View logs:
+```bash
+docker-compose logs -f
+```
+
+Test endpoints:
+- Frontend: `http://app.codehustle.space` (or via Cloudflare tunnel)
+- API: `http://api.codehustle.space/api/v1/health` (if health endpoint exists)
+- Swagger: `http://api.codehustle.space/swagger/index.html`
+
+## Architecture
+
+```
+Internet
+  ↓
+Cloudflare Tunnel (cloudflared)
+  ↓
+Caddy (Reverse Proxy)
+  ├─→ Frontend (Static Files) - app.codehustle.space
+  └─→ Backend API - api.codehustle.space
+       ├─→ MySQL Database
+       ├─→ Redis (Queue)
+       ├─→ MinIO (Object Storage)
+       └─→ Piston (Code Executor)
+  └─→ Judge Worker (Processes submissions)
+```
+
+## Service Details
+
+### Backend (`codehustle-backend`)
+- Go API server
+- Port: 8081 (internal)
+- Handles API requests
+
+### Judge Worker (`codehustle-judge-worker`)
+- Processes code submission jobs from Redis
+- Runs in separate container for scalability
+
+### Frontend (`codehustle-frontend`)
+- React application built with Vite
+- Served via Caddy
+- Port: 80 (internal)
+
+### Caddy (`caddy`)
+- Reverse proxy and SSL termination
+- Routes requests to frontend and backend
+- Ports: 80, 443 (host)
+
+### MySQL (`codehustle-mysql`)
+- Database server
+- Port: 3306 (internal)
+- Data persisted in `mysql_data` volume
+
+### Redis (`codehustle-redis`)
+- Message queue for judge jobs
+- Port: 6379 (internal)
+- Data persisted in `redis_data` volume
+
+### MinIO (`codehustle-minio`)
+- Object storage for problem statements, test cases, etc.
+- Ports: 9000 (API), 9001 (Console) - internal
+- Data persisted in `minio_data` volume
+
+### Piston (`codehustle-piston`)
+- Code execution engine
+- Port: 2000 (internal)
+- Requires privileged mode
+
+## Updating Deployment
+
+1. **Pull latest code**:
+   ```bash
+   git pull
+   ```
+
+2. **Rebuild and restart**:
+   ```bash
+   docker-compose build
+   docker-compose up -d
+   ```
+
+3. **Restart specific service**:
+   ```bash
+   docker-compose restart backend
+   ```
+
+## Troubleshooting
+
+### Services won't start
+- Check logs: `docker-compose logs [service-name]`
+- Verify `.env` file has all required variables
+- Check port conflicts: `netstat -tulpn | grep :80`
+
+### Database connection errors
+- Ensure MySQL is healthy: `docker-compose ps mysql`
+- Check MySQL logs: `docker-compose logs mysql`
+- Verify DB credentials in `.env`
+
+### Frontend not loading
+- Check Caddy logs: `docker-compose logs caddy`
+- Verify Caddyfile syntax
+- Check frontend build: `docker-compose logs frontend`
+
+### Judge worker not processing jobs
+- Check Redis connection: `docker-compose logs redis`
+- Verify judge-worker logs: `docker-compose logs judge-worker`
+- Check Piston is accessible: `docker-compose logs piston`
+
+## Backup
+
+### Database Backup
+```bash
+docker-compose exec mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} codehustle > backup.sql
+```
+
+### Restore Database
+```bash
+docker-compose exec -T mysql mysql -u root -p${MYSQL_ROOT_PASSWORD} codehustle < backup.sql
+```
+
+### MinIO Data Backup
+The MinIO data is stored in the `minio_data` Docker volume. Backup the volume:
+```bash
+docker run --rm -v codehustle_minio_data:/data -v $(pwd):/backup alpine tar czf /backup/minio_backup.tar.gz /data
+```
+
+## Scaling
+
+To scale judge workers:
+```bash
+docker-compose up -d --scale judge-worker=3
+```
+
+## Security Notes
+
+- Change all default passwords in production
+- Use strong JWT_SECRET
+- Keep `.env` file secure (don't commit to git)
+- Regularly update Docker images
+- Monitor logs for suspicious activity
+- Configure firewall rules appropriately
+
+## Monitoring
+
+View all logs:
+```bash
+docker-compose logs -f
+```
+
+View specific service logs:
+```bash
+docker-compose logs -f backend
+docker-compose logs -f judge-worker
+```
+
+Check resource usage:
+```bash
+docker stats
+```
+
+
+
+
+
+
+

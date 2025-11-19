@@ -13,6 +13,7 @@ import (
 	"codehustle/backend/internal/checker"
 	"codehustle/backend/internal/config"
 	"codehustle/backend/internal/models"
+	"codehustle/backend/internal/pistonlog"
 	"codehustle/backend/internal/storage"
 
 	"github.com/sirupsen/logrus"
@@ -188,6 +189,16 @@ func ExecuteCode(code, language, version, stdin string, timeLimitMs, memoryLimit
 
 	logrus.WithField("payload", string(body)).Debug("Piston request payload")
 
+	// Log request to file
+	pistonlog.LogRequest(execURL, payload, map[string]interface{}{
+		"language":        language,
+		"version":         version,
+		"time_limit_ms":   timeLimitMs,
+		"memory_limit_kb": memoryLimitKb,
+		"stdin_length":    len(stdin),
+		"type":            "code_execution",
+	})
+
 	req, err := http.NewRequest(http.MethodPost, execURL, strings.NewReader(string(body)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -198,6 +209,11 @@ func ExecuteCode(code, language, version, stdin string, timeLimitMs, memoryLimit
 	resp, err := client.Do(req)
 	if err != nil {
 		logrus.WithError(err).Error("Piston HTTP request error")
+		pistonlog.LogError(execURL, err, map[string]interface{}{
+			"language": language,
+			"version":  version,
+			"type":     "code_execution",
+		})
 		return nil, fmt.Errorf("piston execution error: %w", err)
 	}
 	defer resp.Body.Close()
@@ -212,6 +228,13 @@ func ExecuteCode(code, language, version, stdin string, timeLimitMs, memoryLimit
 		logrus.WithError(err).Error("Error reading Piston response body")
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
+
+	// Log response to file
+	pistonlog.LogResponse(execURL, resp.StatusCode, b, map[string]interface{}{
+		"language": language,
+		"version":  version,
+		"type":     "code_execution",
+	})
 
 	logrus.WithField("response_body", string(b)).Debug("Piston response body")
 
