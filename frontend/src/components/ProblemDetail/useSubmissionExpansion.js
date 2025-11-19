@@ -20,7 +20,9 @@ export default function useSubmissionExpansion() {
       const url = new URL(window.location.href);
       if (nextId) url.searchParams.set('sid', nextId); else url.searchParams.delete('sid');
       window.history.replaceState({}, '', url.toString());
-    } catch {}
+    } catch {
+      // Ignore URL persistence errors
+    }
   }
 
   function toggleExpand(submission) {

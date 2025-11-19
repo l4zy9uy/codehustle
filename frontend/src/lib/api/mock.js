@@ -26,7 +26,7 @@ export function enableApiMocking() {
   const parseJson = (config) => {
     try {
       return JSON.parse(config.data || '{}');
-    } catch (err) {
+    } catch {
       return {};
     }
   };
@@ -59,15 +59,13 @@ export function enableApiMocking() {
       // Simple demo rule: if password === 'wrong' fail
       if (password === 'wrong') return [401, { message: 'Invalid credentials' }];
       return ok({ token: 'mock-token', user: mockUser });
-    } catch (e) {
+    } catch {
       return [400, { message: 'Malformed JSON' }];
     }
   });
 
   // Auth: forgot password
-  mock.onPost('/auth/forgot-password').reply((config) => {
-    return noContent();
-  });
+  mock.onPost('/auth/forgot-password').reply(() => noContent());
 
   // Auth: me
   mock.onGet('/auth/me').reply((config) => {

@@ -11,16 +11,16 @@ import 'katex/dist/katex.min.css';
 
 // Markdown render components matching DMOJ style
 const mdComponents = {
-    p: ({ node, ...props }) => <p style={{ margin: '0 0 12px 0', lineHeight: '1.6' }} {...props} />,
-    ul: ({ node, ...props }) => <ul style={{ margin: '8px 0 12px', paddingLeft: '1.5rem' }} {...props} />,
-    ol: ({ node, ...props }) => <ol style={{ margin: '8px 0 12px', paddingLeft: '1.5rem' }} {...props} />,
-    h1: ({ node, ...props }) => <h1 style={{ margin: '16px 0 8px', fontSize: '1.8em', fontWeight: 600 }} {...props} />,
-    h2: ({ node, ...props }) => <h2 style={{ margin: '16px 0 8px', fontSize: '1.5em', fontWeight: 600 }} {...props} />,
-    h3: ({ node, ...props }) => <h3 style={{ margin: '12px 0 6px', fontSize: '1.25em', fontWeight: 600 }} {...props} />,
-    h4: ({ node, ...props }) => <h4 style={{ margin: '12px 0 6px', fontSize: '1.1em', fontWeight: 600 }} {...props} />,
-    li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
-    a: ({ node, ...props }) => <a style={{ color: 'var(--mantine-color-blue-6)', textDecoration: 'none' }} {...props} />,
-    code: ({ node, inline, className, children, ...props }) => {
+    p: (props) => <p style={{ margin: '0 0 12px 0', lineHeight: '1.6' }} {...props} />,
+    ul: (props) => <ul style={{ margin: '8px 0 12px', paddingLeft: '1.5rem' }} {...props} />,
+    ol: (props) => <ol style={{ margin: '8px 0 12px', paddingLeft: '1.5rem' }} {...props} />,
+    h1: (props) => <h1 style={{ margin: '16px 0 8px', fontSize: '1.8em', fontWeight: 600 }} {...props} />,
+    h2: (props) => <h2 style={{ margin: '16px 0 8px', fontSize: '1.5em', fontWeight: 600 }} {...props} />,
+    h3: (props) => <h3 style={{ margin: '12px 0 6px', fontSize: '1.25em', fontWeight: 600 }} {...props} />,
+    h4: (props) => <h4 style={{ margin: '12px 0 6px', fontSize: '1.1em', fontWeight: 600 }} {...props} />,
+    li: (props) => <li style={{ marginBottom: '4px' }} {...props} />,
+    a: (props) => <a style={{ color: 'var(--mantine-color-blue-6)', textDecoration: 'none' }} {...props} />,
+    code: ({ inline, className, children, ...props }) => {
         if (!inline && className) {
             const codeContent = typeof children === 'string' ? children : String(children);
             return (
@@ -33,7 +33,7 @@ const mdComponents = {
         }
         return <code style={{ background: 'var(--mantine-color-gray-1)', padding: '2px 4px', borderRadius: '4px', fontSize: '0.9em' }} {...props}>{children}</code>;
     },
-    blockquote: ({ node, ...props }) => (
+    blockquote: (props) => (
         <blockquote style={{ margin: '12px 0', paddingLeft: '16px', borderLeft: '4px solid var(--mantine-color-gray-4)', color: 'var(--mantine-color-gray-7)' }} {...props} />
     ),
 };
@@ -48,7 +48,7 @@ function formatDMojDate(dateString) {
         return formatted.replace(/\s(AM|PM)$/i, (match, period) => {
             return period.toLowerCase() === 'am' ? ' a.m.' : ' p.m.';
         });
-    } catch (e) {
+    } catch {
         return dateString;
     }
 }

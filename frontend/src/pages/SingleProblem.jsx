@@ -411,61 +411,7 @@ function SubmissionDetail({ s, loading, showMoreMap, setShowMoreMap, openInputMa
     );
 }
 
-// Hook to manage submission expansion state, URL sync, and helpers
-function useSubmissionExpansion() {
-    const [expandedId, setExpandedId] = useState(null);
-    const [loadingMap, setLoadingMap] = useState({});
-    const [showMoreMap, setShowMoreMap] = useState({});
-    const [openInputMap, setOpenInputMap] = useState({});
-    const [searchParams] = useSearchParams();
-
-    useEffect(() => {
-        if (!searchParams || typeof searchParams.get !== 'function') return;
-        const sid = searchParams.get('sid');
-        if (sid) setExpandedId(sid);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    function syncUrl(nextId) {
-        try {
-            const url = new URL(window.location.href);
-            if (nextId) url.searchParams.set('sid', nextId); else url.searchParams.delete('sid');
-            window.history.replaceState({}, '', url.toString());
-        } catch {}
-    }
-
-    function toggleExpand(submission) {
-        const willExpand = expandedId !== submission.id;
-        const nextId = willExpand ? submission.id : null;
-        setExpandedId(nextId);
-        syncUrl(nextId);
-        if (willExpand) {
-            setLoadingMap((m) => ({ ...m, [submission.id]: true }));
-            setTimeout(() => setLoadingMap((m) => ({ ...m, [submission.id]: false })), 300);
-        }
-    }
-
-    function truncate(text, limit) {
-        if (!text) return '';
-        if (text.length <= limit) return text;
-        return text.slice(0, limit) + '\n…';
-    }
-
-    return {
-        expandedId,
-        setExpandedId,
-        loadingMap,
-        setLoadingMap,
-        showMoreMap,
-        setShowMoreMap,
-        openInputMap,
-        setOpenInputMap,
-        toggleExpand,
-        truncate,
-    };
-}
-
-function SubmissionList({ items = [], expandedId: _unusedExpandedId, onToggleExpand: _unusedOnToggle }) {
+function SubmissionList({ items = [] }) {
     const {
         expandedId,
         loadingMap,
@@ -586,17 +532,17 @@ function Section({ id, title, children, hideTitle = false }) {
 
 // Local markdown render components to normalize spacing without global CSS
 const mdComponents = {
-    p: ({ node, ...props }) => <p style={{ margin: '0 0 6px 0' }} {...props} />,
-    ul: ({ node, ...props }) => <ul style={{ margin: '4px 0 6px', paddingLeft: '1.25rem' }} {...props} />,
-    ol: ({ node, ...props }) => <ol style={{ margin: '4px 0 6px', paddingLeft: '1.25rem' }} {...props} />,
-    h1: ({ node, ...props }) => <h1 style={{ margin: '8px 0 6px' }} {...props} />,
-    h2: ({ node, ...props }) => <h2 style={{ margin: '8px 0 6px' }} {...props} />,
-    h3: ({ node, ...props }) => <h3 style={{ margin: '6px 0 4px' }} {...props} />,
-    h4: ({ node, ...props }) => <h4 style={{ margin: '6px 0 4px' }} {...props} />,
-    h5: ({ node, ...props }) => <h5 style={{ margin: '6px 0 4px' }} {...props} />,
-    h6: ({ node, ...props }) => <h6 style={{ margin: '6px 0 4px' }} {...props} />,
-    li: ({ node, ...props }) => <li style={{ marginBottom: 4 }} {...props} />,
-    code: ({ node, inline, className, children, ...props }) => {
+    p: (props) => <p style={{ margin: '0 0 6px 0' }} {...props} />,
+    ul: (props) => <ul style={{ margin: '4px 0 6px', paddingLeft: '1.25rem' }} {...props} />,
+    ol: (props) => <ol style={{ margin: '4px 0 6px', paddingLeft: '1.25rem' }} {...props} />,
+    h1: (props) => <h1 style={{ margin: '8px 0 6px' }} {...props} />,
+    h2: (props) => <h2 style={{ margin: '8px 0 6px' }} {...props} />,
+    h3: (props) => <h3 style={{ margin: '6px 0 4px' }} {...props} />,
+    h4: (props) => <h4 style={{ margin: '6px 0 4px' }} {...props} />,
+    h5: (props) => <h5 style={{ margin: '6px 0 4px' }} {...props} />,
+    h6: (props) => <h6 style={{ margin: '6px 0 4px' }} {...props} />,
+    li: (props) => <li style={{ marginBottom: 4 }} {...props} />,
+    code: ({ inline, className, children, ...props }) => {
         // For code blocks (not inline code), render as pre+code without math processing
         if (!inline && className) {
             // Convert children to string and ensure dollar signs are rendered literally

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // Utility functions and constants for filtering problems
 
 import React from 'react';

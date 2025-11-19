@@ -29,9 +29,6 @@ export default function FilterToolbar({
     { value: STATUS_LABEL_VALUE, label: 'Status', disabled: true },
     ...STATUS_OPTIONS.map(o => ({ value: o.value, label: o.label }))
   ];
-  const tagsCompactStyle = (Array.isArray(tags) && tags.length > 2)
-    ? { flex: 1, minWidth: 160 }
-    : { width: 160, flex: '0 0 auto' };
   const hasActiveFilters = (
     (typeof query === 'string' && query.trim().length > 0) ||
     (typeof difficulty === 'string' && difficulty !== 'all') ||

@@ -99,7 +99,7 @@ export async function submitProblem(problemId, payload) {
   let authToken = null;
   try {
     authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-  } catch (e) {
+  } catch {
     // ignore localStorage errors
   }
   

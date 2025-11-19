@@ -48,7 +48,7 @@ function formatContestDate(dateString) {
   try {
     const date = parseISO(dateString);
     return format(date, 'MMM d, yyyy, HH:mm');
-  } catch (e) {
+  } catch {
     return dateString;
   }
 }
