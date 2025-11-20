@@ -1,0 +1,5 @@
+# Environment files (real values stay outside git)
+.env
+*.env.local
+backend/.env
+frontend/.env

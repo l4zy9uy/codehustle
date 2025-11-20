@@ -64,6 +64,7 @@ services:
       retries: 3
 
   backend:
+    image: "${BACKEND_IMAGE_REPO:-codehustle/backend}:${IMAGE_TAG:-latest}"
     build:
       context: .
       dockerfile: Dockerfile
@@ -105,6 +106,7 @@ services:
       - "8081:8081"
 
   judge-worker:
+    image: "${BACKEND_IMAGE_REPO:-codehustle/backend}:${IMAGE_TAG:-latest}"
     build:
       context: .
       dockerfile: Dockerfile
@@ -141,6 +143,7 @@ services:
     networks: [web]
 
   frontend:
+    image: "${FRONTEND_IMAGE_REPO:-codehustle/frontend}:${IMAGE_TAG:-latest}"
     build:
       context: ../frontend
       dockerfile: Dockerfile

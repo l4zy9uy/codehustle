@@ -55,6 +55,9 @@ VITE_GOOGLE_CLIENT_ID=<your-client-id>
 TUNNEL_TOKEN=<cloudflare-tunnel-token>
 LOG_LEVEL=info
 LOG_FORMAT=json
+IMAGE_TAG=latest
+BACKEND_IMAGE_REPO=ghcr.io/<your-org>/codehustle-backend
+FRONTEND_IMAGE_REPO=ghcr.io/<your-org>/codehustle-frontend
 ```
 
 **Important**: Generate a strong JWT_SECRET:
@@ -69,13 +72,15 @@ openssl rand -base64 32
 - **Developers**: Copy `.env.example` → `.env` locally and pull the sensitive values from the approved vault/password manager. Never commit `.env`; the root `.gitignore` keeps it untracked.
 - **Rotation**: When secrets change, update both GitHub and DigitalOcean stores and refresh `.env.example` if new keys are needed.
 
-### 2. Build and Start Services
+### 2. Build and Start Services (manual server)
 
 ```bash
 cd backend
-docker-compose build
-docker-compose up -d
+chmod +x deploy.sh
+./deploy.sh
 ```
+
+The script attempts to pull pre-built images (`BACKEND_IMAGE_REPO`, `FRONTEND_IMAGE_REPO`) tagged with `IMAGE_TAG`. If the registry pull fails (for example on a dev laptop), it falls back to building the images locally before running `docker-compose up -d`.
 
 ### 3. Verify Deployment
 
@@ -93,6 +98,29 @@ Test endpoints:
 - Frontend: `http://app.codehustle.space` (or via Cloudflare tunnel)
 - API: `http://api.codehustle.space/api/v1/health` (if health endpoint exists)
 - Swagger: `http://api.codehustle.space/swagger/index.html`
+
+## CI/CD Deployment Flow
+
+- `Manual Deploy` workflow (`.github/workflows/deploy.yml`) builds the backend and frontend Docker images, pushes them to GitHub Container Registry (GHCR), then SSHes into each production host defined in `DEPLOY_TARGETS`.
+- Hosts clone/pull this repository, check out the exact commit that was built, and execute `backend/deploy.sh` with the matching `IMAGE_TAG`. The script pulls the GHCR images and restarts the stack.
+- Required GitHub secrets:
+  - `DEPLOY_TARGETS`: JSON array (`[{ "name": "prod-a", "host": "xx.xx.xx.xx", "user": "root", "path": "/srv/codehustle", "port": "22" }, ...]`)
+  - `DEPLOY_SSH_KEY` (+ optional `DEPLOY_SSH_KEY_PASSPHRASE`): private key that can SSH into every host listed in `DEPLOY_TARGETS`
+  - `REGISTRY_USERNAME` / `REGISTRY_PASSWORD`: credentials with `read:packages` access to GHCR (used on the droplet to `docker login`)
+- Optional: limit a run to one host by providing its `name` when triggering the workflow; otherwise every host in the matrix deploys in parallel.
+
+## Provisioning Hosts with Ansible
+
+Instead of configuring each server manually, run the playbook in `infra/ansible/playbook.yml`:
+
+```bash
+cp infra/ansible/inventory.example infra/ansible/inventory.prod
+# edit inventory.prod with host IPs, SSH users, repo paths, etc.
+ansible-playbook -i infra/ansible/inventory.prod infra/ansible/playbook.yml \
+  -e backend_env_content="$(cat backend/.env)"
+```
+
+The playbook installs Docker + Compose, creates the deploy user, and clones this repo at the desired path so the GitHub Actions deploy workflow can simply pull images and restart the stack.
 
 ## Architecture
 
@@ -243,8 +271,6 @@ Check resource usage:
 ```bash
 docker stats
 ```
-
-
 
 
 

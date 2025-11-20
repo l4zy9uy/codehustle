@@ -1,0 +1,13 @@
+[prod]
+#prod-a ansible_host=203.0.113.10
+#prod-b ansible_host=203.0.113.11
+
+[prod:vars]
+# SSH user with sudo privileges
+ansible_user=root
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+# Deployment user to own the repo / docker compose files
+deploy_user=codehustle
+deploy_repo_path=/srv/codehustle
+deploy_repo_branch=master
