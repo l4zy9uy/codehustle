@@ -21,11 +21,16 @@ jobs:
     steps:
       - id: collect
         run: |
-          MATRIX="${{ secrets.DEPLOY_TARGETS }}"
-          if [ -z "$MATRIX" ]; then
-            MATRIX='[{"name":"_none","skip":true}]'
+          raw='${{ secrets.DEPLOY_TARGETS }}'
+          if [ -z "$raw" ]; then
+            raw='[{"name":"_none","skip":true}]'
           fi
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          matrix=$(python3 -c "import json,sys; print(json.dumps(json.loads(sys.stdin.read())))" <<<"$raw")
+          {
+            echo "matrix<<'EOF'"
+            echo "$matrix"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
   build-images:
     name: Build & Push Images
