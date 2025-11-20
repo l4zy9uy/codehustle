@@ -17,7 +17,7 @@ jobs:
     name: Prepare Deploy Targets
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.collect.outputs.matrix }}
+      matrix: ${{ steps.collect.outputs.matrix || '[]' }}
     steps:
       - id: collect
         run: |
@@ -25,7 +25,11 @@ jobs:
           if [ -z "$raw" ]; then
             raw='[{"name":"_none","skip":true}]'
           fi
+          echo "Raw DEPLOY_TARGETS input:"
+          echo "$raw"
           matrix=$(python3 -c "import json,sys; print(json.dumps(json.loads(sys.stdin.read())))" <<<"$raw")
+          echo "Normalized matrix value:"
+          echo "$matrix"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build-images:
