@@ -14,7 +14,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"codehustle/backend/api/internal/config"
+	"codehustle/backend/internal/config"
 )
 
 // DB is the global database connection
