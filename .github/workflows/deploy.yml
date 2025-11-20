@@ -23,7 +23,7 @@ jobs:
         run: |
           MATRIX="${{ secrets.DEPLOY_TARGETS }}"
           if [ -z "$MATRIX" ]; then
-            MATRIX='[]'
+            MATRIX='[{"name":"_none","skip":true}]'
           fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
@@ -89,8 +89,13 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.targets.outputs.matrix) }}
     steps:
+      - name: Skip deploy (no targets configured)
+        if: ${{ matrix.target.skip == true }}
+        run: |
+          echo "No deployment targets configured (set DEPLOY_TARGETS secret). Skipping deploy."
+
       - name: Run remote deployment
-        if: ${{ github.event.inputs.host == '' || github.event.inputs.host == matrix.target.name }}
+        if: ${{ matrix.target.skip != true && (github.event.inputs.host == '' || github.event.inputs.host == matrix.target.name) }}
         uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
           host: ${{ matrix.target.host }}
