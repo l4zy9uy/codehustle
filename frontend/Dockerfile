@@ -31,12 +31,11 @@ FROM caddy:2-alpine
 # Copy built files from builder
 COPY --from=builder /app/dist /usr/share/caddy
 
-# Copy Caddyfile for frontend (if exists, otherwise use default)
-COPY Caddyfile /etc/caddy/Caddyfile 2>/dev/null || true
+# Copy Caddyfile for frontend
+COPY Caddyfile /etc/caddy/Caddyfile
 
 # Expose ports
 EXPOSE 80 443
-
 
 
 
