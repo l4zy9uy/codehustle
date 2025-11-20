@@ -26,11 +26,7 @@ jobs:
             raw='[{"name":"_none","skip":true}]'
           fi
           matrix=$(python3 -c "import json,sys; print(json.dumps(json.loads(sys.stdin.read())))" <<<"$raw")
-          {
-            echo "matrix<<'EOF'"
-            echo "$matrix"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build-images:
     name: Build & Push Images
