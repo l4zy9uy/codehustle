@@ -108,6 +108,17 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.targets.outputs.matrix != '' && needs.targets.outputs.matrix || '[{"name":"_none","skip":true}]') }}
     steps:
+      - name: Debug matrix output
+        run: |
+          matrix_value='${{ needs.targets.outputs.matrix }}'
+          echo "Matrix output from targets job:"
+          echo "$matrix_value"
+          echo "Matrix output length: ${#matrix_value}"
+          if [ -n "$matrix_value" ]; then
+            echo "Matrix output first char code: $(printf '%d' "'${matrix_value:0:1}")"
+            echo "Matrix output last char code: $(printf '%d' "'${matrix_value: -1}")"
+          fi
+      
       - name: Skip deploy (no targets configured)
         if: ${{ matrix.target.skip == true }}
         run: |
