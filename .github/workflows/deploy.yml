@@ -25,10 +25,25 @@ jobs:
           if [ -z "$raw" ]; then
             raw='[{"name":"_none","skip":true}]'
           fi
-          echo "Raw DEPLOY_TARGETS input:"
-          echo "$raw"
+          echo "Checking input format..."
+          echo "Input first char code: $(printf '%d' "'${raw:0:1}")"
+          echo "Input last char code: $(printf '%d' "'${raw: -1}")"
+          echo "Input length: ${#raw}"
           set +e
-          matrix=$(python3 -c "import json,sys; data=json.loads(sys.stdin.read()); print(json.dumps(data))" <<<"$raw" 2>&1)
+          matrix=$(python3 <<'PYEOF'
+import json
+import sys
+try:
+    data = json.loads(sys.stdin.read())
+    # Ensure it's always a list/array
+    if not isinstance(data, list):
+        data = [data]
+    print(json.dumps(data))
+except Exception as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+          <<<"$raw" 2>&1)
           exit_code=$?
           set -e
           if [ $exit_code -ne 0 ]; then
@@ -38,8 +53,8 @@ jobs:
           echo "Normalized matrix value:"
           echo "$matrix"
           echo "Matrix length: ${#matrix}"
-          echo "First char: ${matrix:0:1}"
-          echo "Last char: ${matrix: -1}"
+          echo "Matrix first char code: $(printf '%d' "'${matrix:0:1}")"
+          echo "Matrix last char code: $(printf '%d' "'${matrix: -1}")"
           echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
           echo "$matrix" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
