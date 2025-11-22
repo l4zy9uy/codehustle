@@ -5,7 +5,7 @@ Use this playbook to turn fresh DigitalOcean Droplets into CodeHustle deployment
 ## Prerequisites
 
 - Ansible 2.13+ on your control machine.
-- SSH access to the target hosts (`root` or a sudo-enabled user).
+- SSH access to the target hosts (`root` works on fresh VMs; the playbook will create the non-root deploy user).
 - Secrets ready to populate `backend/.env` (store them via vaulted vars or pass them at runtime).
 
 ## Quick Start

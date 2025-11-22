@@ -17,7 +17,7 @@ jobs:
     name: Prepare Deploy Targets
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.collect.outputs.matrix || '[]' }}
+      matrix: ${{ steps.collect.outputs.matrix }}
     steps:
       - id: collect
         run: |
@@ -92,7 +92,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(needs.targets.outputs.matrix) }}
+        target: ${{ fromJSON(needs.targets.outputs.matrix != '' && needs.targets.outputs.matrix || '[{"name":"_none","skip":true}]') }}
     steps:
       - name: Skip deploy (no targets configured)
         if: ${{ matrix.target.skip == true }}

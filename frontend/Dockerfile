@@ -36,9 +36,3 @@ COPY Caddyfile /etc/caddy/Caddyfile
 
 # Expose ports
 EXPOSE 80 443
-
-
-
-
-
-
