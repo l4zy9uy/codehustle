@@ -30,20 +30,7 @@ jobs:
           echo "Input last char code: $(printf '%d' "'${raw: -1}")"
           echo "Input length: ${#raw}"
           set +e
-          matrix=$(python3 <<'PYEOF'
-import json
-import sys
-try:
-    data = json.loads(sys.stdin.read())
-    # Ensure it's always a list/array
-    if not isinstance(data, list):
-        data = [data]
-    print(json.dumps(data))
-except Exception as e:
-    print(f"Error: {e}", file=sys.stderr)
-    sys.exit(1)
-PYEOF
-          <<<"$raw" 2>&1)
+          matrix=$(python3 -c "import json,sys; data=json.loads(sys.stdin.read()); data=[data] if not isinstance(data, list) else data; print(json.dumps(data))" <<<"$raw" 2>&1)
           exit_code=$?
           set -e
           if [ $exit_code -ne 0 ]; then
