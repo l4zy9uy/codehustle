@@ -27,10 +27,22 @@ jobs:
           fi
           echo "Raw DEPLOY_TARGETS input:"
           echo "$raw"
-          matrix=$(python3 -c "import json,sys; print(json.dumps(json.loads(sys.stdin.read())))" <<<"$raw")
+          set +e
+          matrix=$(python3 -c "import json,sys; data=json.loads(sys.stdin.read()); print(json.dumps(data))" <<<"$raw" 2>&1)
+          exit_code=$?
+          set -e
+          if [ $exit_code -ne 0 ]; then
+            echo "Error parsing JSON: $matrix"
+            matrix='[{"name":"_none","skip":true}]'
+          fi
           echo "Normalized matrix value:"
           echo "$matrix"
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Matrix length: ${#matrix}"
+          echo "First char: ${matrix:0:1}"
+          echo "Last char: ${matrix: -1}"
+          echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$matrix" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
   build-images:
     name: Build & Push Images
