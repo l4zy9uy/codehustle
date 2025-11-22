@@ -28,10 +28,3 @@ COPY --from=builder /app/server /app/judge-worker ./
 
 # Default command runs server
 CMD ["./server"]
-
-
-
-
-
-
-
