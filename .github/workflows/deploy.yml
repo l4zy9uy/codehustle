@@ -42,9 +42,9 @@ jobs:
           echo "Matrix length: ${#matrix}"
           echo "Matrix first char code: $(printf '%d' "'${matrix:0:1}")"
           echo "Matrix last char code: $(printf '%d' "'${matrix: -1}")"
-          echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
+          echo "matrix<<__MATRIX_EOF__" >> "$GITHUB_OUTPUT"
           echo "$matrix" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "__MATRIX_EOF__" >> "$GITHUB_OUTPUT"
 
   build-images:
     name: Build & Push Images
