@@ -16,27 +16,9 @@ import {
   Container
 } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import { parseISO, format } from 'date-fns';
 import { getContests } from '../lib/api/contests';
 import { contests as mockContests } from '../lib/api/mockData';
-
-// Format date to match DMOJ format: "Oct 6, 2025, 23:00"
-function formatContestDate(dateString) {
-  try {
-    const date = parseISO(dateString);
-    return format(date, 'MMM d, yyyy, HH:mm');
-  } catch {
-    return dateString;
-  }
-}
-
-// Format window duration: "03:00 window"
-function formatWindowDuration(hours) {
-  if (!hours) return '';
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} window`;
-}
+import { formatContestDate, formatWindowDuration } from '../utils/contestUtils';
 
 export default function Contests() {
   const navigate = useNavigate();
