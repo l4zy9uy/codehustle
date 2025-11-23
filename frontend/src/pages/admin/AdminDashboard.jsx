@@ -22,7 +22,7 @@ import {
   UserGenerateSection,
   ActivitySection,
   QuickActionsSection,
-} from './components/AdminSections.jsx';
+} from '../../components/admin/AdminSections.jsx';
 
 const severityColor = {
   high: 'red',

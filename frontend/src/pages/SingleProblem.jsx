@@ -62,7 +62,7 @@ import CopyPre from "../components/CopyPre";
 // Externalized submission components/hooks
 import SubmissionRowExt from "../components/ProblemDetail/SubmissionRow";
 import SubmissionDetailExt from "../components/ProblemDetail/SubmissionDetail";
-import useSubmissionExpansionExt from "../components/ProblemDetail/useSubmissionExpansion";
+import useSubmissionExpansionExt from "../hooks/useSubmissionExpansion";
 import CodeMirror from '@uiw/react-codemirror';
 import { cpp } from '@codemirror/lang-cpp';
 import { java } from '@codemirror/lang-java';

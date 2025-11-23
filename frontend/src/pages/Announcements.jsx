@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
-import { Text, Group, Select, Pagination, Stack, Skeleton, Card } from '@mantine/core';
+import { Text, Group, Select, Stack, Skeleton, Card, Button } from '@mantine/core';
 import { IconBell } from '@tabler/icons-react';
 import AnnouncementCard from '../components/AnnouncementCard';
 import AnnouncementDetail from '../components/AnnouncementDetail';
@@ -16,44 +16,57 @@ export default function AnnouncementsPage() {
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
     const [fallbackItems, setFallbackItems] = useState([]);
+    const [fallbackVisible, setFallbackVisible] = useState(defaultPageSize);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [useFallback, setUseFallback] = useState(false);
 
     useEffect(() => {
+      if (useFallback) return;
       let cancelled = false;
       const fetchAnnouncements = async () => {
-        setLoading(true);
+        if (page === 1) setLoading(true); else setLoadingMore(true);
         try {
           const res = await getAnnouncements({ page, page_size: pageSize });
           if (cancelled) return;
           const list = res?.items || [];
-          setItems(list);
-          setTotal(res?.total ?? list.length);
+          setItems((prev) => {
+            const next = page === 1 ? list : [...prev, ...list.filter((n) => !prev.some((p) => p.id === n.id))];
+            setTotal(res?.total ?? next.length);
+            return next;
+          });
           setPageSize(res?.page_size ?? pageSize);
           setFallbackItems([]);
         } catch {
           if (cancelled) return;
           const sortedFallback = [...announcementsData].sort((a, b) => new Date(b.date) - new Date(a.date));
           setFallbackItems(sortedFallback);
+          setTotal(sortedFallback.length);
+          setUseFallback(true);
+          setFallbackVisible(defaultPageSize);
         } finally {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            setLoading(false);
+            setLoadingMore(false);
+          }
         }
       };
       fetchAnnouncements();
       return () => { cancelled = true; };
-    }, [page, pageSize]);
+    }, [page, pageSize, useFallback]);
 
-    const sortedAnnouncements = [...(fallbackItems.length ? fallbackItems : items)].sort((a, b) =>
+    const sourceList = useFallback ? fallbackItems.slice(0, fallbackVisible) : items;
+    const sortedAnnouncements = [...sourceList].sort((a, b) =>
       sortOrder === 'Newest'
         ? new Date(b.date) - new Date(a.date)
         : new Date(a.date) - new Date(b.date)
     );
-    const currentAnnouncements = fallbackItems.length
-      ? sortedAnnouncements.slice((page - 1) * pageSize, page * pageSize)
-      : sortedAnnouncements;
+    const currentAnnouncements = sortedAnnouncements;
 
-    const totalItems = fallbackItems.length ? fallbackItems.length : total;
-    const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
-    const end = Math.min(page * pageSize, totalItems);
+    const totalItems = useFallback ? fallbackItems.length : total;
+    const start = totalItems === 0 ? 0 : 1;
+    const end = useFallback ? currentAnnouncements.length : items.length;
+    const hasMore = useFallback ? fallbackVisible < fallbackItems.length : items.length < total;
 
     const handleOpenAnnouncement = async (announcement) => {
       if (!announcement) return;
@@ -66,6 +79,17 @@ export default function AnnouncementsPage() {
         // ignore marking errors in UI
       }
     };
+
+    const handleShowMore = () => {
+      if (useFallback) {
+        setFallbackVisible((prev) => Math.min(prev + pageSize, fallbackItems.length || prev + pageSize));
+      } else {
+        if (!hasMore || loadingMore) return;
+        setPage((prev) => prev + 1);
+      }
+    };
+
+    const isInitialLoading = loading && !items.length && !fallbackItems.length;
 
     return (
         <Stack gap="md" p="md" style={{ maxWidth: 980, width: '100%', margin: '0 auto' }}>
@@ -90,7 +114,7 @@ export default function AnnouncementsPage() {
                     index
                     element={
                         <>
-                            {loading ? (
+                            {isInitialLoading ? (
                               Array.from({ length: 3 }).map((_, i) => (
                                 <Card key={i} withBorder p="md" shadow="sm">
                                   <Group align="flex-start" gap="sm">
@@ -116,14 +140,14 @@ export default function AnnouncementsPage() {
                                   <Text size="xs" c="dimmed">
                                     Showing {start}-{end} of {totalItems}
                                   </Text>
-                                  {Math.ceil(totalItems / pageSize) > 1 && (
-                                    <Pagination
-                                      page={page}
-                                      onChange={setPage}
-                                      total={Math.ceil(totalItems / pageSize)}
-                                      size="sm"
-                                    />
-                                  )}
+                                  <Button
+                                    variant="light"
+                                    size="xs"
+                                    onClick={handleShowMore}
+                                    disabled={!hasMore || loading || loadingMore}
+                                  >
+                                    {loadingMore ? 'Loading...' : hasMore ? 'Show more' : 'No more'}
+                                  </Button>
                                 </Group>
                               </>
                             ) : (
