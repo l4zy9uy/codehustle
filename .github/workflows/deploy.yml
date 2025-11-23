@@ -45,21 +45,20 @@ jobs:
           
           echo ""
           echo "=== Writing to GITHUB_OUTPUT ==="
-          # Try multiline format with a unique delimiter (UUID-based)
-          delimiter="MATRIX_$(openssl rand -hex 8)"
+          # Use multiline format - delimiter must be on its own line at the end
+          delimiter="EOFM$(openssl rand -hex 16)EOF"
           {
             echo "matrix<<${delimiter}"
-            printf '%s' "$matrix"
-            echo ""
+            echo "$matrix"
             echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
           
           echo "=== Verifying GITHUB_OUTPUT content ==="
           if [ -f "$GITHUB_OUTPUT" ]; then
             echo "GITHUB_OUTPUT file exists"
-            echo "Matrix entry written with delimiter: ${delimiter}"
-            echo "First few lines of GITHUB_OUTPUT:"
-            head -3 "$GITHUB_OUTPUT"
+            echo "Matrix entry written with delimiter"
+            echo "Checking format (first 100 chars):"
+            head -c 100 "$GITHUB_OUTPUT" || cat "$GITHUB_OUTPUT" | head -3
           else
             echo "ERROR: GITHUB_OUTPUT file does not exist!"
           fi
