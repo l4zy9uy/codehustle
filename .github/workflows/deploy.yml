@@ -45,29 +45,24 @@ jobs:
           
           echo ""
           echo "=== Writing to GITHUB_OUTPUT ==="
-          # Write using multiline format
+          # Try multiline format with a unique delimiter (UUID-based)
+          delimiter="MATRIX_$(openssl rand -hex 8)"
           {
-            echo "matrix<<__MATRIX_EOF__"
-            echo "$matrix"
-            echo "__MATRIX_EOF__"
+            echo "matrix<<${delimiter}"
+            printf '%s' "$matrix"
+            echo ""
+            echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
           
           echo "=== Verifying GITHUB_OUTPUT content ==="
           if [ -f "$GITHUB_OUTPUT" ]; then
             echo "GITHUB_OUTPUT file exists"
-            echo "Contents:"
-            cat "$GITHUB_OUTPUT"
-            echo ""
-            echo "Checking for matrix entry:"
-            grep -A 5 "^matrix" "$GITHUB_OUTPUT" || echo "No matrix entry found"
+            echo "Matrix entry written with delimiter: ${delimiter}"
+            echo "First few lines of GITHUB_OUTPUT:"
+            head -3 "$GITHUB_OUTPUT"
           else
             echo "ERROR: GITHUB_OUTPUT file does not exist!"
           fi
-          
-          echo ""
-          echo "=== Testing step output retrieval ==="
-          # This won't work in the same step, but shows what should be available
-          echo "After this step, should be accessible as: steps.collect.outputs.matrix"
 
   build-images:
     name: Build & Push Images
