@@ -42,9 +42,32 @@ jobs:
           echo "Matrix length: ${#matrix}"
           echo "Matrix first char code: $(printf '%d' "'${matrix:0:1}")"
           echo "Matrix last char code: $(printf '%d' "'${matrix: -1}")"
-          echo "matrix<<__MATRIX_EOF__" >> "$GITHUB_OUTPUT"
-          echo "$matrix" >> "$GITHUB_OUTPUT"
-          echo "__MATRIX_EOF__" >> "$GITHUB_OUTPUT"
+          
+          echo ""
+          echo "=== Writing to GITHUB_OUTPUT ==="
+          # Write using multiline format
+          {
+            echo "matrix<<__MATRIX_EOF__"
+            echo "$matrix"
+            echo "__MATRIX_EOF__"
+          } >> "$GITHUB_OUTPUT"
+          
+          echo "=== Verifying GITHUB_OUTPUT content ==="
+          if [ -f "$GITHUB_OUTPUT" ]; then
+            echo "GITHUB_OUTPUT file exists"
+            echo "Contents:"
+            cat "$GITHUB_OUTPUT"
+            echo ""
+            echo "Checking for matrix entry:"
+            grep -A 5 "^matrix" "$GITHUB_OUTPUT" || echo "No matrix entry found"
+          else
+            echo "ERROR: GITHUB_OUTPUT file does not exist!"
+          fi
+          
+          echo ""
+          echo "=== Testing step output retrieval ==="
+          # This won't work in the same step, but shows what should be available
+          echo "After this step, should be accessible as: steps.collect.outputs.matrix"
 
   build-images:
     name: Build & Push Images
