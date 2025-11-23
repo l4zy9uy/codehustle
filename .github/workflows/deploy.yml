@@ -110,13 +110,38 @@ jobs:
     steps:
       - name: Debug matrix output
         run: |
+          echo "=== Raw matrix output from targets job ==="
           matrix_value='${{ needs.targets.outputs.matrix }}'
-          echo "Matrix output from targets job:"
-          echo "$matrix_value"
-          echo "Matrix output length: ${#matrix_value}"
+          echo "Matrix value: $matrix_value"
+          echo "Matrix length: ${#matrix_value}"
           if [ -n "$matrix_value" ]; then
-            echo "Matrix output first char code: $(printf '%d' "'${matrix_value:0:1}")"
-            echo "Matrix output last char code: $(printf '%d' "'${matrix_value: -1}")"
+            echo "First char code: $(printf '%d' "'${matrix_value:0:1}")"
+            echo "Last char code: $(printf '%d' "'${matrix_value: -1}")"
+          else
+            echo "WARNING: Matrix value is empty!"
+          fi
+          
+          echo ""
+          echo "=== Matrix strategy resolved values ==="
+          echo "matrix.target.name: ${{ matrix.target.name }}"
+          echo "matrix.target.host: ${{ matrix.target.host }}"
+          echo "matrix.target.user: ${{ matrix.target.user }}"
+          echo "matrix.target.path: ${{ matrix.target.path }}"
+          echo "matrix.target.port: ${{ matrix.target.port }}"
+          echo "matrix.target.skip: ${{ matrix.target.skip }}"
+          
+          echo ""
+          echo "=== Testing JSON parsing ==="
+          if [ -n "$matrix_value" ]; then
+            if echo "$matrix_value" | python3 -m json.tool > /dev/null 2>&1; then
+              echo "✓ JSON is valid"
+              echo "Parsed JSON:"
+              echo "$matrix_value" | python3 -m json.tool
+            else
+              echo "✗ JSON is invalid"
+              echo "Trying to parse anyway..."
+              echo "$matrix_value" | python3 -m json.tool || true
+            fi
           fi
       
       - name: Skip deploy (no targets configured)
