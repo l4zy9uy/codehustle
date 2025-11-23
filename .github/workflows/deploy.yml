@@ -110,22 +110,19 @@ jobs:
     steps:
       - name: Debug needs structure
         run: |
-          echo "=== Checking needs structure ==="
-          echo "needs.targets.outputs.matrix value: '${{ needs.targets.outputs.matrix }}'"
+          echo "=== needs (full object) ==="
+          echo '${{ toJSON(needs) }}' | python3 -m json.tool || echo '${{ toJSON(needs) }}'
           echo ""
-          echo "=== Testing direct access ==="
-          echo "Testing: needs.targets"
-          echo "Result: '${{ needs.targets }}'"
+          echo "=== needs.targets (full object) ==="
+          echo '${{ toJSON(needs.targets) }}' | python3 -m json.tool || echo '${{ toJSON(needs.targets) }}'
           echo ""
-          echo "Testing: needs.targets.outputs"
-          echo "Result: '${{ needs.targets.outputs }}'"
+          echo "=== needs.targets.outputs (full object) ==="
+          echo '${{ toJSON(needs.targets.outputs) }}' | python3 -m json.tool || echo '${{ toJSON(needs.targets.outputs) }}'
           echo ""
-          echo "Testing: needs.targets.outputs.matrix"
-          echo "Result: '${{ needs.targets.outputs.matrix }}'"
-          echo ""
-          echo "=== Checking if values exist ==="
-          echo "needs.targets.outputs.matrix is empty: ${{ needs.targets.outputs.matrix == '' && 'YES' || 'NO' }}"
-          echo "needs.targets.outputs.matrix is null: ${{ needs.targets.outputs.matrix == null && 'YES' || 'NO' }}"
+          echo "=== needs.targets.outputs.matrix (specific value) ==="
+          echo "Value: '${{ needs.targets.outputs.matrix }}'"
+          echo "Is empty: ${{ needs.targets.outputs.matrix == '' && 'YES' || 'NO' }}"
+          echo "Is null: ${{ needs.targets.outputs.matrix == null && 'YES' || 'NO' }}"
       
       - name: Debug matrix output
         run: |
