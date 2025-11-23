@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-export default function useSubmissionExpansion() {
+export function useSubmissionExpansion() {
   const [expandedId, setExpandedId] = useState(null);
   const [loadingMap, setLoadingMap] = useState({});
   const [showMoreMap, setShowMoreMap] = useState({});

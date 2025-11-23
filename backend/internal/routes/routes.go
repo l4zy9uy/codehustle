@@ -43,4 +43,12 @@ func RegisterRoutes(r *gin.Engine) {
 	protected.POST("/problems", middleware.RequireRole(constants.InstructorRoles...), handlers.CreateProblem)
 	protected.PUT("/problems/:id", middleware.RequireRole(constants.InstructorRoles...), handlers.UpdateProblem)
 	protected.DELETE("/problems/:id", middleware.RequireRole(constants.InstructorRoles...), handlers.DeleteProblem)
+
+	// Announcement routes
+	protected.GET("/announcements", handlers.ListAnnouncements)
+	protected.GET("/announcements/:id", handlers.GetAnnouncement)
+	protected.POST("/announcements", middleware.RequireRole(constants.AdminRoles...), handlers.CreateAnnouncement)
+	protected.PUT("/announcements/:id", middleware.RequireRole(constants.AdminRoles...), handlers.UpdateAnnouncement)
+	protected.DELETE("/announcements/:id", middleware.RequireRole(constants.AdminRoles...), handlers.DeleteAnnouncement)
+	protected.POST("/announcements/:id/read", handlers.MarkAnnouncementRead)
 }
