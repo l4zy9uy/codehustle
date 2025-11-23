@@ -58,10 +58,11 @@ services:
     volumes:
       - ./piston-data:/piston
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2000/api/v2/runtimes"]
+      test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 10
+      start_period: 60s
 
   backend:
     image: "${BACKEND_IMAGE_REPO:-codehustle/backend}:${IMAGE_TAG:-latest}"
