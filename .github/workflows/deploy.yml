@@ -17,7 +17,7 @@ jobs:
     name: Prepare Deploy Targets
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.collect.outputs.matrix }}
+      matrix_b64: ${{ steps.collect.outputs.matrix_b64 }}
     steps:
       - id: collect
         run: |
@@ -25,10 +25,6 @@ jobs:
           if [ -z "$raw" ]; then
             raw='[{"name":"_none","skip":true}]'
           fi
-          echo "Checking input format..."
-          echo "Input first char code: $(printf '%d' "'${raw:0:1}")"
-          echo "Input last char code: $(printf '%d' "'${raw: -1}")"
-          echo "Input length: ${#raw}"
           set +e
           matrix=$(python3 -c "import json,sys; data=json.loads(sys.stdin.read()); data=[data] if not isinstance(data, list) else data; print(json.dumps(data))" <<<"$raw" 2>&1)
           exit_code=$?
@@ -37,31 +33,34 @@ jobs:
             echo "Error parsing JSON: $matrix"
             matrix='[{"name":"_none","skip":true}]'
           fi
-          echo "Normalized matrix value:"
-          echo "$matrix"
-          echo "Matrix length: ${#matrix}"
-          echo "Matrix first char code: $(printf '%d' "'${matrix:0:1}")"
-          echo "Matrix last char code: $(printf '%d' "'${matrix: -1}")"
-          
-          echo ""
-          echo "=== Writing to GITHUB_OUTPUT ==="
-          # Use multiline format - delimiter must be on its own line at the end
-          delimiter="EOFM$(openssl rand -hex 16)EOF"
+          # Base64 encode for reliable single-line output
+          matrix_b64=$(echo -n "$matrix" | base64 -w 0)
+          echo "matrix_b64=$matrix_b64" >> "$GITHUB_OUTPUT"
+          echo "Matrix encoded (length: ${#matrix_b64})"
+  
+  decode-matrix:
+    name: Decode Matrix
+    runs-on: ubuntu-latest
+    needs: targets
+    outputs:
+      matrix: ${{ steps.decode.outputs.matrix }}
+    steps:
+      - id: decode
+        run: |
+          matrix_b64='${{ needs.targets.outputs.matrix_b64 }}'
+          if [ -z "$matrix_b64" ]; then
+            matrix='[{"name":"_none","skip":true}]'
+          else
+            matrix=$(echo -n "$matrix_b64" | base64 -d)
+          fi
+          # Use multiline format for the decoded JSON
+          delimiter="MATRIX_$(openssl rand -hex 16)"
           {
             echo "matrix<<${delimiter}"
             echo "$matrix"
             echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
-          
-          echo "=== Verifying GITHUB_OUTPUT content ==="
-          if [ -f "$GITHUB_OUTPUT" ]; then
-            echo "GITHUB_OUTPUT file exists"
-            echo "Matrix entry written with delimiter"
-            echo "Checking format (first 100 chars):"
-            head -c 100 "$GITHUB_OUTPUT" || cat "$GITHUB_OUTPUT" | head -3
-          else
-            echo "ERROR: GITHUB_OUTPUT file does not exist!"
-          fi
+          echo "Matrix decoded and written"
 
   build-images:
     name: Build & Push Images
@@ -118,33 +117,33 @@ jobs:
     name: Deploy (${{ matrix.target.name }})
     runs-on: ubuntu-latest
     needs:
-      - targets
+      - decode-matrix
       - build-images
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(needs.targets.outputs.matrix != '' && needs.targets.outputs.matrix || '[{"name":"_none","skip":true}]') }}
+        target: ${{ fromJSON(needs.decode-matrix.outputs.matrix != '' && needs.decode-matrix.outputs.matrix || '[{"name":"_none","skip":true}]') }}
     steps:
       - name: Debug needs structure
         run: |
           echo "=== needs (full object) ==="
           echo '${{ toJSON(needs) }}' | python3 -m json.tool || echo '${{ toJSON(needs) }}'
           echo ""
-          echo "=== needs.targets (full object) ==="
-          echo '${{ toJSON(needs.targets) }}' | python3 -m json.tool || echo '${{ toJSON(needs.targets) }}'
+          echo "=== needs.decode-matrix (full object) ==="
+          echo '${{ toJSON(needs.decode-matrix) }}' | python3 -m json.tool || echo '${{ toJSON(needs.decode-matrix) }}'
           echo ""
-          echo "=== needs.targets.outputs (full object) ==="
-          echo '${{ toJSON(needs.targets.outputs) }}' | python3 -m json.tool || echo '${{ toJSON(needs.targets.outputs) }}'
+          echo "=== needs.decode-matrix.outputs (full object) ==="
+          echo '${{ toJSON(needs.decode-matrix.outputs) }}' | python3 -m json.tool || echo '${{ toJSON(needs.decode-matrix.outputs) }}'
           echo ""
-          echo "=== needs.targets.outputs.matrix (specific value) ==="
-          echo "Value: '${{ needs.targets.outputs.matrix }}'"
-          echo "Is empty: ${{ needs.targets.outputs.matrix == '' && 'YES' || 'NO' }}"
-          echo "Is null: ${{ needs.targets.outputs.matrix == null && 'YES' || 'NO' }}"
+          echo "=== needs.decode-matrix.outputs.matrix (specific value) ==="
+          echo "Value: '${{ needs.decode-matrix.outputs.matrix }}'"
+          echo "Is empty: ${{ needs.decode-matrix.outputs.matrix == '' && 'YES' || 'NO' }}"
+          echo "Is null: ${{ needs.decode-matrix.outputs.matrix == null && 'YES' || 'NO' }}"
       
       - name: Debug matrix output
         run: |
-          echo "=== Raw matrix output from targets job ==="
-          matrix_value='${{ needs.targets.outputs.matrix }}'
+          echo "=== Raw matrix output from decode-matrix job ==="
+          matrix_value='${{ needs.decode-matrix.outputs.matrix }}'
           echo "Matrix value: $matrix_value"
           echo "Matrix length: ${#matrix_value}"
           if [ -n "$matrix_value" ]; then
