@@ -108,6 +108,26 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.targets.outputs.matrix != '' && needs.targets.outputs.matrix || '[{"name":"_none","skip":true}]') }}
     steps:
+      - name: Debug needs structure
+        run: |
+          echo "=== Checking needs structure ==="
+          echo "needs.targets.outputs.matrix value: '${{ needs.targets.outputs.matrix }}'"
+          echo "needs.targets.outputs.matrix length: ${{ length(needs.targets.outputs.matrix) }}"
+          echo ""
+          echo "=== Testing direct access ==="
+          echo "Testing: needs.targets"
+          echo "Result: '${{ needs.targets }}'"
+          echo ""
+          echo "Testing: needs.targets.outputs"
+          echo "Result: '${{ needs.targets.outputs }}'"
+          echo ""
+          echo "Testing: needs.targets.outputs.matrix"
+          echo "Result: '${{ needs.targets.outputs.matrix }}'"
+          echo ""
+          echo "=== Checking if values exist ==="
+          echo "needs.targets.outputs.matrix is empty: ${{ needs.targets.outputs.matrix == '' && 'YES' || 'NO' }}"
+          echo "needs.targets.outputs.matrix is null: ${{ needs.targets.outputs.matrix == null && 'YES' || 'NO' }}"
+      
       - name: Debug matrix output
         run: |
           echo "=== Raw matrix output from targets job ==="
