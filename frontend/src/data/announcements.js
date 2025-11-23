@@ -26,6 +26,7 @@ const announcements = [
     targets: ['All cohorts'],
     channels: ['web', 'email'],
     pinned: true,
+    read: false,
   },
   {
     id: 2,
@@ -50,6 +51,7 @@ const announcements = [
     targets: ['New semester'],
     channels: ['web'],
     pinned: false,
+    read: true,
   },
   {
     id: 3,
@@ -84,6 +86,7 @@ const announcements = [
     targets: ['ICPC Elite'],
     channels: ['web'],
     pinned: false,
+    read: false,
   }
 ];
 

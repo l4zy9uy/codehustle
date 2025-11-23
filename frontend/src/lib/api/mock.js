@@ -21,7 +21,7 @@ export function enableApiMocking() {
   // Helpers
   const ok = (data = {}, status = 200, headers) => [status, data, headers];
   const noContent = () => [204];
-  let announcementStore = announcements.map((entry) => ({ ...entry }));
+  let announcementStore = announcements.map((entry) => ({ read: false, ...entry }));
 
   const parseJson = (config) => {
     try {
@@ -79,7 +79,19 @@ export function enableApiMocking() {
   mock.onGet('/users/me/recent-submissions').reply(() => ok({ items: mockRecentSubmissions }));
 
   // Announcements
-  mock.onGet('/announcements').reply(() => ok({ items: announcementStore }));
+  mock.onGet('/announcements').reply((config) => {
+    const page = Number(config.params?.page) || 1;
+    const pageSize = Number(config.params?.page_size) || 10;
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const items = announcementStore.slice(start, end);
+    return ok({
+      items,
+      total: announcementStore.length,
+      page,
+      page_size: pageSize,
+    });
+  });
   mock.onGet(/\/announcements\/\d+$/).reply((config) => {
     const id = Number(config.url.split('/').pop());
     const item = announcementStore.find((a) => Number(a.id) === id);
@@ -104,6 +116,7 @@ export function enableApiMocking() {
       date: publishAt,
       publishAt,
       updatedAt: now,
+      read: false,
     };
     announcementStore = [newAnnouncement, ...announcementStore];
     return ok(newAnnouncement, 201);
@@ -133,6 +146,15 @@ export function enableApiMocking() {
     if (!exists) return [404, { message: 'Announcement not found' }];
     announcementStore = announcementStore.filter((item) => Number(item.id) !== id);
     return noContent();
+  });
+  mock.onPost(/\/announcements\/\d+\/read$/).reply((config) => {
+    const id = Number(config.url.split('/').slice(-2)[0]);
+    const body = parseJson(config);
+    const status = (body.status || 'read').toLowerCase();
+    const item = announcementStore.find((a) => Number(a.id) === id);
+    if (!item) return [404, { message: 'Announcement not found' }];
+    item.read = status === 'read';
+    return ok({ id, status: item.read ? 'read' : 'unread' });
   });
 
   // Courses

@@ -2,7 +2,7 @@ import api from '../apiClient';
 
 export async function getAnnouncements(params) {
   const { data } = await api.get('/announcements', { params });
-  return data; // { items: [...] }
+  return data; // { items, total, page, page_size }
 }
 
 export async function getAnnouncement(id) {
@@ -23,4 +23,9 @@ export async function updateAnnouncement(id, payload) {
 export async function deleteAnnouncement(id) {
   await api.delete(`/announcements/${id}`);
   return true;
+}
+
+export async function markAnnouncementRead(id, status = 'read') {
+  const { data } = await api.post(`/announcements/${id}/read`, { status });
+  return data; // { id, status }
 }

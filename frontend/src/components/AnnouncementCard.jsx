@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Card, Text, Group, Image } from '@mantine/core';
+import { Card, Text, Group, Image, Badge } from '@mantine/core';
 import { parseISO, format } from 'date-fns';
 
 export default function AnnouncementCard({ announcement, onClick }) {
-    const { title, snippet, date, updatedAt, image } = announcement;
+    const { title, snippet, date, updatedAt, image, read } = announcement;
     const formattedDate = format(parseISO(date), 'MMM dd, yyyy');
     const formattedUpdatedAt = updatedAt ? format(parseISO(updatedAt), 'MMM dd, yyyy') : null;
     const [hovered, setHovered] = useState(false);
@@ -27,9 +27,12 @@ export default function AnnouncementCard({ announcement, onClick }) {
                     <Image src={image} alt={`${title} thumbnail`} width={60} height={60} radius="sm" fit="cover" />
                 )}
                 <div style={{ flex: 1 }}>
-                    <Text fw={600} size="lg">
-                        {title}
-                    </Text>
+                    <Group justify="space-between" align="center" gap="xs">
+                        <Text fw={600} size="lg">
+                            {title}
+                        </Text>
+                        {!read && <Badge color="blue" size="xs">Unread</Badge>}
+                    </Group>
                     <Text size="xs" c="dimmed" mt={4}>
                         Posted {formattedDate}
                         {formattedUpdatedAt && (
