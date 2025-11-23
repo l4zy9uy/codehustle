@@ -112,7 +112,6 @@ jobs:
         run: |
           echo "=== Checking needs structure ==="
           echo "needs.targets.outputs.matrix value: '${{ needs.targets.outputs.matrix }}'"
-          echo "needs.targets.outputs.matrix length: ${{ length(needs.targets.outputs.matrix) }}"
           echo ""
           echo "=== Testing direct access ==="
           echo "Testing: needs.targets"
