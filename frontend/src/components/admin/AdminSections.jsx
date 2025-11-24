@@ -29,6 +29,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Editor } from '@tinymce/tinymce-react';
+import { LOCAL_TINYMCE_SCRIPT } from '../../config/tinymce';
 import {
   IconAlertTriangle,
   IconArrowDownRight,
@@ -49,6 +50,22 @@ import {
   IconUserPlus,
 } from '@tabler/icons-react';
 import { format, formatDistanceToNow } from 'date-fns';
+
+const announcementEditorInit = {
+  license_key: 'gpl',
+  height: 320,
+  menubar: 'insert view format tools table help',
+  branding: false,
+  plugins: [
+    'advlist autolink lists link image charmap preview anchor',
+    'searchreplace visualblocks code fullscreen',
+    'insertdatetime media table code help wordcount',
+  ].join(' '),
+  toolbar:
+    'undo redo | formatselect | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | removeformat | preview code',
+  placeholder: 'Write an announcement... Use the toolbar for formatting.',
+  content_style: 'body { font-family: Inter, Helvetica, Arial, sans-serif; font-size: 14px; }',
+};
 
 export function OverviewSection({ loading, stats }) {
   return (
@@ -318,7 +335,6 @@ export function AnnouncementsListSection({
   channelOptions,
   handleComposerSubmit,
   composerSaving,
-  tinyMceApiKey,
 }) {
   return (
     <Stack gap="lg">
@@ -640,17 +656,10 @@ export function AnnouncementsListSection({
           <div style={{ flex: 1 }}>
             <Text size="xs" c="dimmed" mb={4}>Rich text</Text>
             <Editor
-              apiKey={tinyMceApiKey}
+              tinymceScriptSrc={LOCAL_TINYMCE_SCRIPT}
               value={composerValues.content}
               onEditorChange={handleContentChange}
-              init={{
-                height: 320,
-                menubar: false,
-                branding: false,
-                plugins: 'lists link code table',
-                toolbar: 'undo redo | bold italic underline | bullist numlist | link | code',
-                placeholder: 'Write an announcement... Use the toolbar for formatting.',
-              }}
+              init={announcementEditorInit}
             />
           </div>
           <Group grow>
@@ -705,7 +714,6 @@ export function AnnouncementsListSection({
 export function AnnouncementCreateSection({
   composerValues,
   setComposerValues,
-  tinyMceApiKey,
   audienceOptions,
   channelOptions,
   handleContentChange,
@@ -747,17 +755,10 @@ export function AnnouncementCreateSection({
       <div style={{ flex: 1 }}>
         <Text size="xs" c="dimmed" mb={4}>Rich text</Text>
         <Editor
-          apiKey={tinyMceApiKey}
+          tinymceScriptSrc={LOCAL_TINYMCE_SCRIPT}
           value={composerValues.content}
           onEditorChange={handleContentChange}
-          init={{
-            height: 320,
-            menubar: false,
-            branding: false,
-            plugins: 'lists link code table',
-            toolbar: 'undo redo | bold italic underline | bullist numlist | link | code',
-            placeholder: 'Write an announcement... Use the toolbar for formatting.',
-          }}
+          init={announcementEditorInit}
         />
       </div>
       <Group grow>

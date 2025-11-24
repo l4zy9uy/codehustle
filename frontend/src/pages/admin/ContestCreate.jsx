@@ -18,12 +18,15 @@ import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { Editor } from '@tinymce/tinymce-react';
+import { LOCAL_TINYMCE_SCRIPT } from '../../config/tinymce';
 import { createContest } from '../../lib/api/contests';
 
 const defaultEditorInit = {
+  license_key: 'gpl',
   height: 320,
   menubar: false,
-  plugins: 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount',
+  plugins:
+    'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount',
   toolbar:
     'undo redo | formatselect | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | code',
   content_style: 'body { font-family: Inter, Helvetica, Arial, sans-serif; font-size: 14px; }',
@@ -176,7 +179,7 @@ export default function ContestCreate({ embedded = false, onSuccess = null, onCa
               </Text>
             </Text>
             <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'}
+              tinymceScriptSrc={LOCAL_TINYMCE_SCRIPT}
               value={description}
               onEditorChange={setDescription}
               init={defaultEditorInit}

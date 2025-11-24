@@ -37,7 +37,6 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const tinyMceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key';
   
   const [openParentSection, setOpenParentSection] = useState(null);
   const [activeChildSection, setActiveChildSection] = useState(null);
@@ -174,7 +173,6 @@ export default function AdminDashboard() {
             <AnnouncementCreateSection
               composerValues={composerValues}
               setComposerValues={setComposerValues}
-              tinyMceApiKey={tinyMceApiKey}
               audienceOptions={audienceOptions}
               channelOptions={channelOptions}
               handleContentChange={handleContentChange}
@@ -217,7 +215,6 @@ export default function AdminDashboard() {
             channelOptions={channelOptions}
             handleComposerSubmit={handleComposerSubmit}
             composerSaving={composerSaving}
-            tinyMceApiKey={tinyMceApiKey}
           />
         );
       case 'admin-settings':
