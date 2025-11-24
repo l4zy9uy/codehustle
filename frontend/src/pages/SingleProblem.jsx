@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Box,
   SimpleGrid,
@@ -89,20 +89,10 @@ function LeftTabsHeader({ leftTab, setLeftTab }) {
 
 export default function ProblemPage({ problem: incomingProblem, onSubmit, defaultLang }) {
   const params = useParams();
-  const [searchParams] = useSearchParams();
   const [leftTab, setLeftTab] = useState('problem');
-  const [expandedSubmissionId, setExpandedSubmissionId] = useState(null);
 
   const { problem, loading, memLimit, accRate, timeLimit } = useProblemDetail(params?.slug, incomingProblem);
   const { submissions, submitting, lang, setLang, source, setSource, handleSubmit } = useProblemSubmission(problem.id, defaultLang);
-
-  // Initialize expanded submission from URL (?sid=...)
-  useEffect(() => {
-    if (!searchParams || typeof searchParams.get !== 'function') return;
-    const sid = searchParams.get('sid');
-    if (sid) setExpandedSubmissionId(sid);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Keyboard shortcut: Ctrl+Enter to submit
   useEffect(() => {
