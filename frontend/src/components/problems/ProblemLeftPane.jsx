@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, ScrollArea, Stack, Divider, Button, Box, Skeleton } from '@mantine/core';
+import { Paper, ScrollArea, Stack, Divider, Button, Box, Skeleton, Group } from '@mantine/core';
 import { IconFileText, IconListCheck } from '@tabler/icons-react';
 import { PANE_HEADER_H } from '../../constants/problems';
 
@@ -80,14 +80,7 @@ function LeftTabsHeader({ leftTab, setLeftTab }) {
 export default function ProblemLeftPane({ 
   leftTab, 
   setLeftTab, 
-  loading, 
-  problem, 
-  timeLimit, 
-  memLimit, 
-  accRate,
-  submissions,
-  expandedSubmissionId,
-  setExpandedSubmissionId
+  loading
 }) {
   return (
     <Paper withBorder p={0} radius="md" className="problem-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
