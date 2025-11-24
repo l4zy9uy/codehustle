@@ -1,7 +1,6 @@
 import AxiosMockAdapter from 'axios-mock-adapter';
 import api from '../apiClient';
 import {
-  announcements,
   courses,
   contests,
   contestDetails,
@@ -21,34 +20,6 @@ export function enableApiMocking() {
   // Helpers
   const ok = (data = {}, status = 200, headers) => [status, data, headers];
   const noContent = () => [204];
-  let announcementStore = announcements.map((entry) => ({ read: false, ...entry }));
-
-  const parseJson = (config) => {
-    try {
-      return JSON.parse(config.data || '{}');
-    } catch {
-      return {};
-    }
-  };
-
-  const normalizeTargets = (value) => {
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') {
-      return value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-    return [];
-  };
-
-  const nextAnnouncementId = () => {
-    const currentMax = announcementStore.reduce((max, item) => {
-      const idNum = Number(item.id) || 0;
-      return Math.max(max, idNum);
-    }, 0);
-    return currentMax + 1;
-  };
 
   // Auth: login
   mock.onPost('/auth/login').reply((config) => {
@@ -77,85 +48,6 @@ export function enableApiMocking() {
   // Users (profile data)
   mock.onGet('/users/me/stats').reply(() => ok(mockStats));
   mock.onGet('/users/me/recent-submissions').reply(() => ok({ items: mockRecentSubmissions }));
-
-  // Announcements
-  mock.onGet('/announcements').reply((config) => {
-    const page = Number(config.params?.page) || 1;
-    const pageSize = Number(config.params?.page_size) || 10;
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    const items = announcementStore.slice(start, end);
-    return ok({
-      items,
-      total: announcementStore.length,
-      page,
-      page_size: pageSize,
-    });
-  });
-  mock.onGet(/\/announcements\/\d+$/).reply((config) => {
-    const id = Number(config.url.split('/').pop());
-    const item = announcementStore.find((a) => Number(a.id) === id);
-    return item ? ok(item) : [404, { message: 'Announcement not found' }];
-  });
-  mock.onPost('/announcements').reply((config) => {
-    const body = parseJson(config);
-    const now = new Date().toISOString();
-    const publishAt = body.publishAt || body.date || now;
-    const newAnnouncement = {
-      id: nextAnnouncementId(),
-      title: body.title || 'Untitled announcement',
-      snippet: body.snippet || '',
-      content: body.content || '',
-      author: body.author || 'Admin',
-      image: body.image || null,
-      status: body.status || 'draft',
-      audience: body.audience || 'global',
-      targets: normalizeTargets(body.targets || body.targetsInput),
-      channels: Array.isArray(body.channels) && body.channels.length ? body.channels : ['web'],
-      pinned: !!body.pinned,
-      date: publishAt,
-      publishAt,
-      updatedAt: now,
-      read: false,
-    };
-    announcementStore = [newAnnouncement, ...announcementStore];
-    return ok(newAnnouncement, 201);
-  });
-  mock.onPut(/\/announcements\/\d+$/).reply((config) => {
-    const id = Number(config.url.split('/').pop());
-    const current = announcementStore.find((item) => Number(item.id) === id);
-    if (!current) return [404, { message: 'Announcement not found' }];
-    const body = parseJson(config);
-    const now = new Date().toISOString();
-    const publishAt = body.publishAt || body.date || current.publishAt || current.date || now;
-    const updatedAnnouncement = {
-      ...current,
-      ...body,
-      targets: normalizeTargets(body.targets ?? current.targets),
-      channels: Array.isArray(body.channels) ? body.channels : current.channels,
-      date: publishAt,
-      publishAt,
-      updatedAt: now,
-    };
-    announcementStore = announcementStore.map((item) => (Number(item.id) === id ? updatedAnnouncement : item));
-    return ok(updatedAnnouncement);
-  });
-  mock.onDelete(/\/announcements\/\d+$/).reply((config) => {
-    const id = Number(config.url.split('/').pop());
-    const exists = announcementStore.some((item) => Number(item.id) === id);
-    if (!exists) return [404, { message: 'Announcement not found' }];
-    announcementStore = announcementStore.filter((item) => Number(item.id) !== id);
-    return noContent();
-  });
-  mock.onPost(/\/announcements\/\d+\/read$/).reply((config) => {
-    const id = Number(config.url.split('/').slice(-2)[0]);
-    const body = parseJson(config);
-    const status = (body.status || 'read').toLowerCase();
-    const item = announcementStore.find((a) => Number(a.id) === id);
-    if (!item) return [404, { message: 'Announcement not found' }];
-    item.read = status === 'read';
-    return ok({ id, status: item.read ? 'read' : 'unread' });
-  });
 
   // Courses
   mock.onGet('/courses').reply(() => ok({ items: courses }));

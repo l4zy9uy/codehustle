@@ -1,32 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
-import { Text, Group, Select, Stack, Skeleton, Card, Button } from '@mantine/core';
+import { Text, Group, Select, Stack, Skeleton, Card, Button, Alert } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 import AnnouncementCard from '../components/AnnouncementCard';
 import AnnouncementDetail from '../components/AnnouncementDetail';
 import { getAnnouncements, getAnnouncement, markAnnouncementRead } from '../lib/api/announcements';
-import announcementsData from '../data/announcements';
+
+const PAGE_SIZE = 5;
 
 export default function Home() {
     const navigate = useNavigate();
     const [sortOrder, setSortOrder] = useState('Newest');
     const [page, setPage] = useState(1);
-    const defaultPageSize = 5;
-    const [pageSize, setPageSize] = useState(defaultPageSize);
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
-    const [fallbackItems, setFallbackItems] = useState([]);
-    const [fallbackVisible, setFallbackVisible] = useState(defaultPageSize);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
-    const [useFallback, setUseFallback] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
       let cancelled = false;
       const fetchAnnouncements = async () => {
-        if (useFallback) return;
-        if (page === 1) setLoading(true); else setLoadingMore(true);
+        setError(null);
+        if (page === 1) setLoading(true);
+        else setLoadingMore(true);
         try {
-          const res = await getAnnouncements({ page, page_size: pageSize });
+          const res = await getAnnouncements({ page, page_size: PAGE_SIZE });
           if (cancelled) return;
           const list = res?.items || [];
           setItems((prev) => {
@@ -34,16 +33,15 @@ export default function Home() {
             setTotal(res?.total ?? next.length);
             return next;
           });
-          setPageSize(res?.page_size ?? pageSize);
-          setFallbackItems([]);
-          setUseFallback(false);
-        } catch {
+        } catch (err) {
           if (cancelled) return;
-          const sortedFallback = [...announcementsData].sort((a, b) => new Date(b.date) - new Date(a.date));
-          setFallbackItems(sortedFallback);
-          setTotal(sortedFallback.length);
-          setUseFallback(true);
-          setFallbackVisible(defaultPageSize);
+          setError(err?.message || 'Unable to load announcements');
+          if (page > 1) {
+            setPage((prev) => Math.max(1, prev - 1));
+          } else {
+            setItems([]);
+            setTotal(0);
+          }
         } finally {
           if (!cancelled) {
             setLoading(false);
@@ -55,26 +53,24 @@ export default function Home() {
       return () => {
         cancelled = true;
       };
-    }, [page, pageSize, useFallback]);
+    }, [page]);
 
-    const sourceList = useFallback ? fallbackItems.slice(0, fallbackVisible) : items;
-    const sortedAnnouncements = [...sourceList].sort((a, b) =>
+    const sortedAnnouncements = [...items].sort((a, b) =>
       sortOrder === 'Newest'
         ? new Date(b.date) - new Date(a.date)
         : new Date(a.date) - new Date(b.date)
     );
     const pagedAnnouncements = sortedAnnouncements;
 
-    const totalItems = useFallback ? fallbackItems.length : total;
+    const totalItems = total;
     const start = totalItems === 0 ? 0 : 1;
-    const end = useFallback ? pagedAnnouncements.length : items.length;
-    const hasMore = useFallback ? fallbackVisible < fallbackItems.length : items.length < total;
+    const end = items.length;
+    const hasMore = items.length < total;
 
     const handleOpenAnnouncement = async (announcement) => {
       if (!announcement) return;
       navigate(`/home/${announcement.id}`);
       setItems((prev) => prev.map((item) => item.id === announcement.id ? { ...item, read: true } : item));
-      setFallbackItems((prev) => prev.map((item) => item.id === announcement.id ? { ...item, read: true } : item));
       try {
         await markAnnouncementRead(announcement.id, 'read');
       } catch {
@@ -83,15 +79,11 @@ export default function Home() {
     };
 
     const handleShowMore = () => {
-      if (useFallback) {
-        setFallbackVisible((prev) => Math.min(prev + pageSize, fallbackItems.length || prev + pageSize));
-      } else {
-        if (!hasMore || loadingMore) return;
-        setPage((prev) => prev + 1);
-      }
+      if (!hasMore || loadingMore) return;
+      setPage((prev) => prev + 1);
     };
 
-    const isInitialLoading = loading && !items.length && !fallbackItems.length;
+    const isInitialLoading = loading && !items.length;
 
     return (
         <Stack gap="md" p="md" style={{ maxWidth: 1440, width: '100%', margin: '0 auto' }}>
@@ -111,6 +103,16 @@ export default function Home() {
                 />
             </Group>
             <Routes>
+                {error && (
+                  <Alert
+                    variant="light"
+                    color="red"
+                    icon={<IconAlertCircle size={16} />}
+                    mb="sm"
+                  >
+                    {error}
+                  </Alert>
+                )}
                 <Route
                     index
                     element={
@@ -168,20 +170,36 @@ export default function Home() {
 function AnnouncementDetailWrapper() {
     const { id } = useParams();
     const [announcement, setAnnouncement] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     useEffect(() => {
       if (!id) return;
-      const fallback = announcementsData.find((item) => String(item.id) === String(id)) || null;
+      let cancelled = false;
+      setLoading(true);
+      setError(null);
       getAnnouncement(id)
         .then((res) => {
-          if (res && Object.keys(res).length) {
-            setAnnouncement(res);
-          } else {
-            setAnnouncement(fallback);
+          if (!cancelled) {
+            setAnnouncement(res || null);
           }
         })
-        .catch(() => setAnnouncement(fallback));
+        .catch((err) => {
+          if (!cancelled) {
+            setError(err?.message || 'Unable to load announcement');
+            setAnnouncement(null);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
       markAnnouncementRead(id, 'read').catch(() => {});
+      return () => {
+        cancelled = true;
+      };
     }, [id]);
-    if (!announcement) return <Text size="sm" c="dimmed">Loading...</Text>;
+
+    if (loading) return <Text size="sm" c="dimmed">Loading...</Text>;
+    if (error || !announcement) return <Text size="sm" c="red">Announcement not available.</Text>;
     return <AnnouncementDetail announcement={announcement} />;
 }

@@ -1,7 +1,3 @@
-// Centralized mock datasets used by axios-mock-adapter.
-// Reuse existing local demo data where available.
-
-import announcements from '../../data/announcements';
 
 export const mockUser = {
   role: "admin", // "admin", "editor", "student"
@@ -390,5 +386,3 @@ export const adminDashboard = {
     { id: 'act-3', actor: 'System', action: 'Auto-disabled submission', target: 'Suspected plagiarism', timestamp: '2025-01-08T08:55:00Z' },
   ],
 };
-
-export { announcements };
