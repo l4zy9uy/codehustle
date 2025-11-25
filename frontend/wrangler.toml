@@ -1,0 +1,18 @@
+name = "codehustle-frontend"
+main = "worker.js"
+compatibility_date = "2025-11-25"
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "codehustle-frontend"
+
+# Environment variables
+[vars]
+BACKEND_URL = "http://backend:8081"
+
+# Routes - configure in Cloudflare dashboard
+# routes = [
+#   { pattern = "app.codehustle.space/*", zone_name = "codehustle.space" }
+# ]
+

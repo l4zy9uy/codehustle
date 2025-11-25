@@ -1,0 +1,94 @@
+name: Deploy Frontend to Cloudflare R2 + Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch or tag) to deploy"
+        required: false
+        default: master
+      backend_url:
+        description: "Backend URL for /api proxy (overrides wrangler.toml BACKEND_URL). Leave empty to use secret FRONTEND_BACKEND_URL."
+        required: false
+        default: ""
+  push:
+    branches:
+      - master
+
+env:
+  NODE_VERSION: 20
+  R2_BUCKET_NAME: codehustle-frontend
+  WORKING_DIR: frontend
+  BACKEND_URL_VAR: ${{ vars.FRONTEND_BACKEND_URL }}
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKING_DIR }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Install Wrangler CLI
+        run: npm install -g wrangler@3
+
+      - name: Create R2 bucket (idempotent)
+        run: wrangler r2 bucket create ${{ env.R2_BUCKET_NAME }} --force
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Upload dist assets to R2
+        run: |
+          set -euo pipefail
+          cd dist
+          find . -type f -print0 | while IFS= read -r -d '' file; do
+            key="${file#./}"
+            echo "Uploading $key"
+            wrangler r2 object put "${R2_BUCKET_NAME}/${key}" --file="$file"
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ env.R2_BUCKET_NAME }}
+
+      - name: Deploy Worker
+        run: |
+          BACKEND_URL_INPUT="${{ github.event.inputs.backend_url }}"
+          BACKEND_URL_VAR="${BACKEND_URL_VAR}"
+          EFFECTIVE_BACKEND_URL="$BACKEND_URL_INPUT"
+          if [ -z "$EFFECTIVE_BACKEND_URL" ]; then
+            EFFECTIVE_BACKEND_URL="$BACKEND_URL_VAR"
+          fi
+
+          if [ -n "$EFFECTIVE_BACKEND_URL" ]; then
+            echo "Deploying with BACKEND_URL override"
+            wrangler deploy --var "BACKEND_URL:$EFFECTIVE_BACKEND_URL"
+          else
+            echo "Deploying with BACKEND_URL from wrangler.toml"
+            wrangler deploy
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

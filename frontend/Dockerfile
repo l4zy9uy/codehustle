@@ -1,4 +1,4 @@
-# Build stage
+# Build stage only - frontend will be served from Cloudflare R2 + Workers
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -25,14 +25,4 @@ ENV VITE_ENABLE_API_MOCKS=$VITE_ENABLE_API_MOCKS
 # Build the application
 RUN npm run build
 
-# Serve stage
-FROM caddy:2-alpine
-
-# Copy built files from builder
-COPY --from=builder /app/dist /usr/share/caddy
-
-# Copy Caddyfile for frontend
-COPY Caddyfile /etc/caddy/Caddyfile
-
-# Expose ports
-EXPOSE 80 443
+# Output is in /app/dist - this will be uploaded to R2

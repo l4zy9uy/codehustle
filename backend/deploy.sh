@@ -50,3 +50,4 @@ echo "🔍 Useful commands:"
 echo "   - View logs: docker-compose logs -f [service-name]"
 echo "   - Stop services: docker-compose down"
 echo "   - Restart service: docker-compose restart [service-name]"
+
