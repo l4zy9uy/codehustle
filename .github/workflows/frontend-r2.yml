@@ -50,13 +50,13 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Install Wrangler CLI
-        run: npm install -g wrangler@3
+      - name: Install Wrangler CLI v4
+        run: npm install -g wrangler@4
 
       - name: Create R2 bucket (idempotent)
         run: |
           echo "Using Wrangler version: $(wrangler --version)"
-          echo "Ensuring bucket exists: ${R2_BUCKET_NAME}"
+          echo "Ensuring bucket exists: ${R2_BUCKET_NAME} (account: ${CLOUDFLARE_ACCOUNT_ID})"
           # Wrangler errors if the bucket already exists; treat that as success.
           wrangler r2 bucket create "${R2_BUCKET_NAME}" || echo "Bucket ${R2_BUCKET_NAME} likely already exists"
         env:
@@ -70,7 +70,7 @@ jobs:
           find . -type f -print0 | while IFS= read -r -d '' file; do
             key="${file#./}"
             echo "Uploading $key"
-            wrangler r2 object put "${R2_BUCKET_NAME}/${key}" --file="$file"
+            wrangler r2 object put "${R2_BUCKET_NAME}/${key}" --file="$file" || { echo "Upload failed for $key. Check CLOUDFLARE_API_TOKEN permissions (needs R2 write) and account ID."; exit 1; }
           done
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
