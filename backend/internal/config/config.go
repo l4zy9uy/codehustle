@@ -49,6 +49,12 @@ var defaults = map[string]string{
 	// Logging
 	"LOG_LEVEL":  "info", // trace, debug, info, warn, error, fatal, panic
 	"LOG_FORMAT": "text", // text or json
+
+	// Bootstrap admin (optional)
+	"ADMIN_EMAIL":      "",
+	"ADMIN_PASSWORD":   "",
+	"ADMIN_FIRST_NAME": "Admin",
+	"ADMIN_LAST_NAME":  "User",
 }
 
 // LoadEnv loads environment variables from .env files

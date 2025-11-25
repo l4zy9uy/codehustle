@@ -51,4 +51,29 @@ func RegisterRoutes(r *gin.Engine) {
 	protected.PUT("/announcements/:id", middleware.RequireRole(constants.AdminRoles...), handlers.UpdateAnnouncement)
 	protected.DELETE("/announcements/:id", middleware.RequireRole(constants.AdminRoles...), handlers.DeleteAnnouncement)
 	protected.POST("/announcements/:id/read", handlers.MarkAnnouncementRead)
+
+	// Contest routes
+	protected.GET("/contests", handlers.ListContests)
+	protected.GET("/contests/:id", handlers.GetContest)
+	protected.POST("/contests", middleware.RequireRole(constants.InstructorRoles...), handlers.CreateContest)
+	protected.PUT("/contests/:id", middleware.RequireRole(constants.InstructorRoles...), handlers.UpdateContest)
+	protected.DELETE("/contests/:id", middleware.RequireRole(constants.InstructorRoles...), handlers.DeleteContest)
+	
+	// Contest participation routes
+	protected.POST("/contests/:id/register", handlers.RegisterForContest)
+	protected.POST("/contests/:id/unregister", handlers.UnregisterFromContest)
+	protected.GET("/contests/:id/participants", handlers.ListContestParticipants)
+	
+	// Contest problem routes
+	protected.GET("/contests/:id/problems", handlers.ListContestProblems)
+	protected.GET("/contests/:id/problems/:problem_id", handlers.GetContestProblem)
+	protected.POST("/contests/:id/problems", middleware.RequireRole(constants.InstructorRoles...), handlers.AddProblemToContest)
+	protected.PUT("/contests/:id/problems/:problem_id", middleware.RequireRole(constants.InstructorRoles...), handlers.UpdateContestProblem)
+	protected.DELETE("/contests/:id/problems/:problem_id", middleware.RequireRole(constants.InstructorRoles...), handlers.RemoveProblemFromContest)
+	
+	// Contest submission routes
+	protected.POST("/contests/:id/problems/:problem_id/submit", handlers.SubmitContestProblem)
+	protected.GET("/contests/:id/submissions", handlers.ListContestSubmissions)
+	protected.GET("/contests/:id/submissions/:submission_id", handlers.GetContestSubmission)
+	protected.GET("/contests/:id/problems/:problem_id/submissions", handlers.ListContestProblemSubmissions)
 }

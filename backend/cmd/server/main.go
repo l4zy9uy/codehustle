@@ -30,6 +30,10 @@ func main() {
 	if err := db.Migrate(); err != nil {
 		panic(fmt.Sprintf("database migration failed: %v", err))
 	}
+	// Seed initial admin if env vars are provided
+	if err := db.SeedAdminFromEnv(); err != nil {
+		panic(fmt.Sprintf("admin seed failed: %v", err))
+	}
 
 	// Initialize MinIO
 	if err := storage.InitMinIO(); err != nil {
