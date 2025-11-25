@@ -54,7 +54,11 @@ jobs:
         run: npm install -g wrangler@3
 
       - name: Create R2 bucket (idempotent)
-        run: wrangler r2 bucket create ${{ env.R2_BUCKET_NAME }} --force
+        run: |
+          echo "Using Wrangler version: $(wrangler --version)"
+          echo "Ensuring bucket exists: ${R2_BUCKET_NAME}"
+          # Wrangler errors if the bucket already exists; treat that as success.
+          wrangler r2 bucket create "${R2_BUCKET_NAME}" || echo "Bucket ${R2_BUCKET_NAME} likely already exists"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
