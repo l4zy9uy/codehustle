@@ -1,5 +1,13 @@
+{
+    # Trust Cloudflare edge IPs for real client IPs (when proxied through Cloudflare)
+    servers {
+        trusted_proxies cloudflare
+    }
+}
+
 # Frontend app
 app.codehustle.space {
+    encode zstd gzip
     reverse_proxy frontend:80 {
         header_up Host {host}
         header_up X-Real-IP {remote}
@@ -10,6 +18,7 @@ app.codehustle.space {
 
 # API endpoint
 api.codehustle.space {
+    encode zstd gzip
     reverse_proxy backend:8081 {
         header_up Host {host}
         header_up X-Real-IP {remote}

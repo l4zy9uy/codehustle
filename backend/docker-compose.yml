@@ -155,6 +155,21 @@ services:
     networks: [web]
     logging: *default-logging
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: codehustle-cadvisor
+    restart: unless-stopped
+    privileged: true
+    networks: [web]
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    logging: *default-logging
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
