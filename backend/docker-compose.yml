@@ -181,6 +181,17 @@ services:
     networks: [web]
     logging: *default-logging
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - backend
+    networks: [web]
+    logging: *default-logging
+
 networks: { web: {} }
 
 volumes:

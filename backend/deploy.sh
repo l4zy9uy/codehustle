@@ -18,19 +18,27 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 export IMAGE_TAG
 echo "🏷️  Using image tag: ${IMAGE_TAG}"
 
-SERVICES="backend judge-worker frontend caddy cadvisor"
+SERVICES="backend judge-worker cadvisor cloudflared"
+FRONTEND_DIR="../frontend"
 
 # Pull prebuilt images if available
 echo "📥 Pulling Docker images (${SERVICES})..."
 if docker-compose pull ${SERVICES}; then
-    echo "✅ Pulled application images successfully."
+    echo "Pulled application images successfully."
 else
-    echo "⚠️  Pull failed (likely missing registry credentials). Falling back to local build..."
+    echo "⚠Pull failed (likely missing registry credentials). Falling back to local build..."
     docker-compose build ${SERVICES}
 fi
 
 echo "Starting services..."
 docker-compose up -d --remove-orphans
+
+echo "Building & starting frontend..."
+(
+  cd "${FRONTEND_DIR}"
+  docker-compose build frontend
+  docker-compose up -d frontend
+)
 
 echo "Waiting for services to be healthy..."
 sleep 10
