@@ -161,7 +161,8 @@ services:
     restart: unless-stopped
     privileged: true
     environment:
-      - DOCKER_API_VERSION=1.44
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_API_VERSION=1.47
     networks: [web]
     ports:
       - "8080:8080"
