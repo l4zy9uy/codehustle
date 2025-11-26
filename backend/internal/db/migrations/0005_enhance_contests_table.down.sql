@@ -20,3 +20,4 @@ ALTER TABLE contests DROP COLUMN IF EXISTS allowed_languages;
 ALTER TABLE contests DROP COLUMN IF EXISTS password;
 
 
+

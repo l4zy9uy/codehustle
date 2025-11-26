@@ -24,3 +24,4 @@ ALTER TABLE contest_problems ADD COLUMN allowed_languages JSON NULL COMMENT 'Per
 CREATE INDEX idx_contest_problems_ordinal ON contest_problems(contest_id, ordinal);
 
 
+

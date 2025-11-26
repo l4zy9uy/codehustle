@@ -127,3 +127,4 @@ func (c *Contest) RequiresPassword() bool {
 }
 
 
+
