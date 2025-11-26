@@ -160,12 +160,15 @@ services:
     container_name: codehustle-cadvisor
     restart: unless-stopped
     privileged: true
+    environment:
+      - DOCKER_API_VERSION=1.44
     networks: [web]
     ports:
       - "8080:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     logging: *default-logging
