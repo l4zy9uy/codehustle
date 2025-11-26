@@ -160,9 +160,6 @@ services:
     container_name: codehustle-cadvisor
     restart: unless-stopped
     privileged: true
-    command:
-      - "--store_container_labels=true"
-      - "--whitelisted_container_labels=com.docker.compose.service,com.docker.compose.project,io.kubernetes.container.name,io.kubernetes.pod.name"
     networks: [web]
     ports:
       - "8080:8080"
