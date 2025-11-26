@@ -156,7 +156,7 @@ services:
     logging: *default-logging
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.52.0
     container_name: codehustle-cadvisor
     restart: unless-stopped
     privileged: true
