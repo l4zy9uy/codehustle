@@ -26,5 +26,8 @@ WORKDIR /root/
 # Copy binaries from builder
 COPY --from=builder /app/server /app/judge-worker ./
 
+# Copy SQL migrations so golang-migrate can find them at runtime
+COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
+
 # Default command runs server
 CMD ["./server"]
