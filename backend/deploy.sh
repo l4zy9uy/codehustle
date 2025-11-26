@@ -18,13 +18,15 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 export IMAGE_TAG
 echo "🏷️  Using image tag: ${IMAGE_TAG}"
 
+SERVICES="backend judge-worker frontend caddy cadvisor"
+
 # Pull prebuilt images if available
-echo "📥 Pulling Docker images (backend, judge-worker, frontend)..."
-if docker-compose pull backend judge-worker frontend; then
+echo "📥 Pulling Docker images (${SERVICES})..."
+if docker-compose pull ${SERVICES}; then
     echo "✅ Pulled application images successfully."
 else
     echo "⚠️  Pull failed (likely missing registry credentials). Falling back to local build..."
-    docker-compose build backend judge-worker frontend
+    docker-compose build ${SERVICES}
 fi
 
 echo "🔄 Starting services..."
@@ -50,4 +52,3 @@ echo "🔍 Useful commands:"
 echo "   - View logs: docker-compose logs -f [service-name]"
 echo "   - Stop services: docker-compose down"
 echo "   - Restart service: docker-compose restart [service-name]"
-
