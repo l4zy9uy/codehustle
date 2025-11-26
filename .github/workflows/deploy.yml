@@ -113,14 +113,6 @@ jobs:
       - name: Push frontend image
         run: docker push "${{ steps.meta.outputs.frontend_image }}:${{ steps.gitmeta.outputs.tag }}"
 
-  deploy-frontend:
-    if: ${{ false }}  # removed: R2/Worker deployment no longer used
-    name: (removed) Deploy Frontend to R2 + Workers
-    runs-on: ubuntu-latest
-    needs: build-images
-    steps:
-      - run: echo "R2/Worker deployment disabled."
-
   deploy:
     name: Deploy (${{ matrix.target.name }})
     runs-on: ubuntu-latest
