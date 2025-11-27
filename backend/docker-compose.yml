@@ -169,6 +169,21 @@ services:
       - /sys:/sys:ro
     logging: *default-logging
 
+  container-metadata-exporter:
+    image: "${BACKEND_IMAGE_REPO:-codehustle/backend}:${IMAGE_TAG:-latest}"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codehustle-container-metadata-exporter
+    restart: unless-stopped
+    command: ["./container-metadata-exporter", "--containerd-socket=/run/containerd/containerd.sock", "--namespace=moby", "--listen=:9090"]
+    volumes:
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+    networks: [web]
+    ports:
+      - "9090:9090"
+    logging: *default-logging
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
