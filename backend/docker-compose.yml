@@ -176,9 +176,9 @@ services:
       dockerfile: Dockerfile
     container_name: codehustle-container-metadata-exporter
     restart: unless-stopped
-    command: ["./container-metadata-exporter", "--containerd-socket=/run/containerd/containerd.sock", "--namespace=moby", "--listen=:9090"]
+    command: ["./container-metadata-exporter", "--use-docker", "--docker-socket=/var/run/docker.sock", "--listen=:9090"]
     volumes:
-      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [web]
     ports:
       - "9090:9090"
