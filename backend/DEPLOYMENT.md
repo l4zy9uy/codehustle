@@ -112,7 +112,10 @@ Test endpoints:
   - `DEPLOY_TARGETS`: JSON array (`[{ "name": "prod-a", "host": "xx.xx.xx.xx", "user": "root", "path": "/srv/codehustle", "port": "22" }, ...]`)
   - `DEPLOY_SSH_KEY` (+ optional `DEPLOY_SSH_KEY_PASSPHRASE`): private key that can SSH into every host listed in `DEPLOY_TARGETS`
   - `REGISTRY_USERNAME` / `REGISTRY_PASSWORD`: credentials with `read:packages` access to GHCR (used on the droplet to `docker login`)
+  - `CLOUDFLARE_ORIGIN_CERT`: Cloudflare Origin Certificate (for TLS between Tunnel and Caddy)
+  - `CLOUDFLARE_ORIGIN_KEY`: Cloudflare Origin Certificate Private Key
 - Optional: limit a run to one host by providing its `name` when triggering the workflow; otherwise every host in the matrix deploys in parallel.
+- See `backend/certs/README.md` for instructions on obtaining Cloudflare Origin Certificates.
 
 ## Provisioning Hosts with Ansible
 

@@ -3,3 +3,10 @@
 *.env.local
 backend/.env
 frontend/.env
+
+# Certificate files (stored as GitHub Secrets)
+backend/certs/origin.pem
+backend/certs/origin.key
+*.pem
+*.key
+!backend/certs/*.example

@@ -217,6 +217,23 @@ jobs:
 
             cd backend
 
+            # Create certificate directory if it doesn't exist
+            mkdir -p certs
+
+            # Create certificate files from GitHub Secrets (if provided)
+            if [ -n "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" ] && [ -n "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" ]; then
+              echo "Creating Cloudflare Origin Certificate files from secrets..."
+              echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" > certs/origin.pem
+              echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" > certs/origin.key
+              chmod 644 certs/origin.pem
+              chmod 600 certs/origin.key
+              echo "✓ Certificate files created"
+            else
+              echo "⚠️  Warning: CLOUDFLARE_ORIGIN_CERT and/or CLOUDFLARE_ORIGIN_KEY secrets not set."
+              echo "   Caddy will fail to start if certificates are required."
+              echo "   See backend/certs/README.md for setup instructions."
+            fi
+
             if [ -n "${{ secrets.REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
               echo "Logging into container registry..."
               echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
