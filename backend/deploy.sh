@@ -18,7 +18,7 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 export IMAGE_TAG
 echo "🏷️  Using image tag: ${IMAGE_TAG}"
 
-SERVICES="backend judge-worker cadvisor cloudflared"
+SERVICES="backend caddy judge-worker cadvisor cloudflared"
 FRONTEND_DIR="../frontend"
 
 # Pull prebuilt images if available

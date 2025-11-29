@@ -37,6 +37,7 @@ Create a `.env` file in the `backend/` directory with production values (copy fr
 
 ```env
 ENV=production
+PUBLIC_DOMAIN=codehustle.space          # set once; auto-fills FRONTEND_URL, VITE_API_HOST, GOOGLE_REDIRECT_URI
 JWT_SECRET=<generate-strong-random-secret>
 DB_NAME=codehustle
 DB_USER=app
@@ -52,6 +53,8 @@ GOOGLE_REDIRECT_URI=https://api.codehustle.space/api/v1/auth/google/callback
 VITE_API_BASE_URL=/api
 VITE_API_HOST=https://api.codehustle.space
 VITE_GOOGLE_CLIENT_ID=<your-client-id>
+CADDY_HTTP_PORT=80
+CADDY_HTTPS_PORT=443
 TUNNEL_TOKEN=<cloudflare-tunnel-token>
 LOG_LEVEL=info
 LOG_FORMAT=json
@@ -59,6 +62,8 @@ IMAGE_TAG=latest
 BACKEND_IMAGE_REPO=ghcr.io/<your-org>/codehustle-backend
 FRONTEND_IMAGE_REPO=ghcr.io/<your-org>/codehustle-frontend
 ```
+
+Tip: set `PUBLIC_DOMAIN` once (e.g., `codehustle.space`) and leave `FRONTEND_URL`, `VITE_API_HOST`, and `GOOGLE_REDIRECT_URI` blank in your vaulted vars; the Ansible template fills them based on that domain.
 
 **Important**: Generate a strong JWT_SECRET:
 ```bash
@@ -271,8 +276,6 @@ Check resource usage:
 ```bash
 docker stats
 ```
-
-
 
 
 

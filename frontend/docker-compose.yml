@@ -12,4 +12,11 @@ services:
         - VITE_ENABLE_API_MOCKS=${VITE_ENABLE_API_MOCKS:-false}
     ports:
       - "3000:80"
+    networks:
+      - backend_web
     restart: unless-stopped
+
+networks:
+  backend_web:
+    external: true
+    name: backend_web

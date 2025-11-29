@@ -8,7 +8,7 @@ import (
 )
 
 var defaults = map[string]string{
-	"ENV":  "development",
+	"ENV":  "production",
 	"PORT": "8081",
 
 	// JWT
@@ -17,9 +17,9 @@ var defaults = map[string]string{
 	// Database
 	"DB_DIALECT":  "mysql",
 	"DB_HOST":     "127.0.0.1",
-	"DB_PORT":     "2412",
-	"DB_USER":     "root",
-	"DB_PASSWORD": "rootpass",
+	"DB_PORT":     "3305",
+	"DB_USER":     "app",
+	"DB_PASSWORD": "apppass",
 	"DB_NAME":     "codehustle",
 
 	// MinIO
@@ -48,7 +48,7 @@ var defaults = map[string]string{
 
 	// Logging
 	"LOG_LEVEL":  "info", // trace, debug, info, warn, error, fatal, panic
-	"LOG_FORMAT": "text", // text or json
+	"LOG_FORMAT": "json", // text or json
 
 	// Bootstrap admin (optional)
 	"ADMIN_EMAIL":      "",
