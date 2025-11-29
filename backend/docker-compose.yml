@@ -19,7 +19,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password --sql-mode="STRICT_TRANS_TABLES"
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -36,7 +36,7 @@ services:
       - "6378:6379"
     volumes:
       - redis_data:/data
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -54,7 +54,7 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -67,7 +67,7 @@ services:
     container_name: codehustle-piston
     privileged: true
     restart: unless-stopped
-    networks: [backend_web]
+    networks: [web]
     volumes:
       - piston_data:/piston
     logging: *default-logging
@@ -116,7 +116,7 @@ services:
         condition: service_healthy
       piston:
         condition: service_healthy
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
     ports:
       - "8081:8081"
@@ -135,7 +135,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
 
   judge-worker:
@@ -173,7 +173,7 @@ services:
         condition: service_healthy
       piston:
         condition: service_healthy
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
 
   cadvisor:
@@ -181,7 +181,7 @@ services:
     container_name: codehustle-cadvisor
     restart: unless-stopped
     privileged: true
-    networks: [backend_web]
+    networks: [web]
     ports:
       - "8080:8080"
     volumes:
@@ -200,7 +200,7 @@ services:
     command: ["./container-metadata-exporter", "--use-docker", "--docker-socket=/var/run/docker.sock", "--listen=:9090"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks: [backend_web]
+    networks: [web]
     ports:
       - "9090:9090"
     logging: *default-logging
@@ -213,11 +213,11 @@ services:
     command: tunnel run --token ${TUNNEL_TOKEN}
     depends_on:
       - caddy
-    networks: [backend_web]
+    networks: [web]
     logging: *default-logging
 
 networks:
-  backend_web:
+  web:
     name: backend_web
 
 volumes:
