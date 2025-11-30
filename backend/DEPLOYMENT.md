@@ -6,7 +6,7 @@ This guide covers deploying CodeHustle to production.
 
 - Docker and Docker Compose installed
 - Production server with sufficient resources
-- Domain names configured (app.codehustle.space, api.codehustle.space)
+- Domain names configured (appv1.codehustle.space, apiv1.codehustle.space)
 - Cloudflare tunnel token (if using Cloudflare Tunnel)
 - Google OAuth credentials
 
@@ -46,12 +46,12 @@ MYSQL_ROOT_PASSWORD=<strong-root-password>
 MINIO_ROOT_USER=<minio-user>
 MINIO_ROOT_PASSWORD=<strong-minio-password>
 REDIS_PASSWORD=<optional-redis-password>
-FRONTEND_URL=https://app.codehustle.space
+FRONTEND_URL=https://appv1.codehustle.space
 GOOGLE_CLIENT_ID=<your-client-id>
 GOOGLE_CLIENT_SECRET=<your-client-secret>
-GOOGLE_REDIRECT_URI=https://api.codehustle.space/api/v1/auth/google/callback
+GOOGLE_REDIRECT_URI=https://apiv1.codehustle.space/api/v1/auth/google/callback
 VITE_API_BASE_URL=/api
-VITE_API_HOST=https://api.codehustle.space
+VITE_API_HOST=https://apiv1.codehustle.space
 VITE_GOOGLE_CLIENT_ID=<your-client-id>
 CADDY_HTTP_PORT=80
 CADDY_HTTPS_PORT=443
@@ -100,9 +100,9 @@ docker-compose logs -f
 ```
 
 Test endpoints:
-- Frontend: `http://app.codehustle.space` (or via Cloudflare tunnel)
-- API: `http://api.codehustle.space/api/v1/health` (if health endpoint exists)
-- Swagger: `http://api.codehustle.space/swagger/index.html`
+- Frontend: `http://appv1.codehustle.space` (or via Cloudflare tunnel)
+- API: `http://apiv1.codehustle.space/api/v1/health` (if health endpoint exists)
+- Swagger: `http://apiv1.codehustle.space/swagger/index.html`
 
 ## CI/CD Deployment Flow
 
@@ -138,8 +138,8 @@ Internet
 Cloudflare Tunnel (cloudflared)
   ↓
 Caddy (Reverse Proxy)
-  ├─→ Frontend (Static Files) - app.codehustle.space
-  └─→ Backend API - api.codehustle.space
+  ├─→ Frontend (Static Files) - appv1.codehustle.space
+  └─→ Backend API - apiv1.codehustle.space
        ├─→ MySQL Database
        ├─→ Redis (Queue)
        ├─→ MinIO (Object Storage)

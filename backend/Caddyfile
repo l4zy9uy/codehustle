@@ -1,17 +1,24 @@
 # Frontend app
-app.codehustle.space {
+appv1.codehustle.space {
     tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
     encode zstd gzip
-    reverse_proxy frontend:80 {
+    reverse_proxy codehustle-frontend:80 {
         header_up Host {host}
         header_up X-Real-IP {remote}
         header_up X-Forwarded-For {remote}
         header_up X-Forwarded-Proto {scheme}
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 60s
+            read_timeout 120s
+            write_timeout 120s
+            keepalive 30s
+        }
     }
 }
 
 # API endpoint
-api.codehustle.space {
+apiv1.codehustle.space {
     tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
     encode zstd gzip
     reverse_proxy backend:8081 {

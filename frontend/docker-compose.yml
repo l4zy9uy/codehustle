@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   frontend:
+    container_name: codehustle-frontend
     build:
       context: .
       dockerfile: Dockerfile
