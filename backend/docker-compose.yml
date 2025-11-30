@@ -128,16 +128,21 @@ services:
     depends_on:
       backend:
         condition: service_started
-    # Ports not needed - Cloudflare Tunnel connects internally
-    # ports:
-    #   - "${CADDY_HTTP_PORT:-80}:80"
-    #   - "${CADDY_HTTPS_PORT:-443}:443"
+    # Ports exposed for direct access testing
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/etc/caddy/certs:ro
       - caddy_data:/data
       - caddy_config:/config
-    networks: [web]
+    dns:
+      - 127.0.0.11
+    networks:
+      web:
+        aliases:
+          - caddy
     logging: *default-logging
 
   judge-worker:
@@ -212,9 +217,10 @@ services:
     restart: unless-stopped
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
-    command: tunnel run --token ${TUNNEL_TOKEN}
-    depends_on:
-      - caddy
+    command: tunnel run
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
     networks: [web]
     logging: *default-logging
 
