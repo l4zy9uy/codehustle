@@ -33,12 +33,14 @@ echo "🏷️  Using image tag: ${IMAGE_TAG}"
 SERVICES="backend caddy judge-worker cadvisor cloudflared"
 FRONTEND_DIR="../frontend"
 
-if [ "$DEPLOY_BACKEND" = "true" ]; then
+if [ "$DEPLOY_BACKEND" = "true" ] || [ "$DEPLOY_FRONTEND" = "true" ]; then
     if [ -n "${REGISTRY_USERNAME:-}" ] && [ -n "${REGISTRY_PASSWORD:-}" ]; then
         echo "Logging into container registry..."
         echo "${REGISTRY_PASSWORD}" | docker login ghcr.io -u "${REGISTRY_USERNAME}" --password-stdin
     fi
+fi
 
+if [ "$DEPLOY_BACKEND" = "true" ]; then
     echo "📥 Pulling Docker images (${SERVICES})..."
     if docker-compose pull ${SERVICES}; then
         echo "Pulled application images successfully."
@@ -54,11 +56,11 @@ else
 fi
 
 if [ "$DEPLOY_FRONTEND" = "true" ]; then
-    echo "Building & starting frontend..."
+    echo "Pulling & starting frontend..."
     (
       cd "${FRONTEND_DIR}"
-      docker-compose build frontend
-      docker-compose up -d frontend
+      docker-compose pull frontend
+      docker-compose up -d --remove-orphans frontend
     )
 else
     echo "Skipping frontend deployment (DEPLOY_FRONTEND=false)"

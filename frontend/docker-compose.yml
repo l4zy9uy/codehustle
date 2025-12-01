@@ -3,6 +3,7 @@ version: "3.9"
 services:
   frontend:
     container_name: codehustle-frontend
+    image: "${FRONTEND_IMAGE_REPO:-codehustle/frontend}:${IMAGE_TAG:-latest}"
     build:
       context: .
       dockerfile: Dockerfile
