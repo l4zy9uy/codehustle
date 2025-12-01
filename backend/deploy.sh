@@ -12,8 +12,10 @@ to_bool() {
 
 DEPLOY_BACKEND=$(to_bool "${DEPLOY_BACKEND:-true}")
 DEPLOY_FRONTEND=$(to_bool "${DEPLOY_FRONTEND:-true}")
+RECREATE_CADDY=$(to_bool "${RECREATE_CADDY:-false}")
 echo "Deploy backend stack: ${DEPLOY_BACKEND}"
 echo "Deploy frontend stack: ${DEPLOY_FRONTEND}"
+echo "Recreate Caddy container: ${RECREATE_CADDY}"
 
 # Check if .env file exists
 if [ ! -f .env ]; then
@@ -51,6 +53,13 @@ if [ "$DEPLOY_BACKEND" = "true" ]; then
 
     echo "Starting backend services..."
     docker-compose up -d --remove-orphans
+
+    # Force recreate Caddy container if Caddyfile changed
+    if [ "$RECREATE_CADDY" = "true" ]; then
+        echo "🔄 Caddyfile changed - forcing recreation of Caddy container..."
+        docker-compose up -d --force-recreate --no-deps caddy
+        echo "✓ Caddy container recreated with new Caddyfile"
+    fi
 else
     echo "Skipping backend services (DEPLOY_BACKEND=false)"
 fi

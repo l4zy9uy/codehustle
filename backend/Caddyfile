@@ -97,3 +97,15 @@ api.codehustle.space {
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+# Block direct IP access and unknown hosts
+:80, :443 {
+    respond "403 Forbidden - Direct IP access not allowed" 403
+    log {
+        output stdout
+        format console {
+            time_format "2006-01-02 15:04:05"
+        }
+        level INFO
+    }
+}
