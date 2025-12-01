@@ -11,6 +11,10 @@ on:
         description: "Optional matrix host name (deploy all if empty)"
         required: false
         default: ""
+      component:
+        description: "Which part to deploy (auto, backend, frontend, both)"
+        required: false
+        default: auto
 
 jobs:
   targets:
@@ -60,11 +64,88 @@ jobs:
             echo "$matrix"
             echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
-          echo "Matrix decoded and written"
+            echo "Matrix decoded and written"
+
+  detect-scope:
+    name: Detect Deploy Scope
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_backend: ${{ steps.set.outputs.deploy_backend }}
+      deploy_frontend: ${{ steps.set.outputs.deploy_frontend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+
+      - name: Determine default branch
+        id: default-branch
+        run: |
+          default_branch=$(git remote show origin | sed -n 's/  HEAD branch: //p')
+          default_branch=${default_branch:-master}
+          echo "value=$default_branch" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ steps.default-branch.outputs.value }}
+
+      - name: Detect components to deploy
+        id: set
+        env:
+          COMPONENT_INPUT: ${{ github.event.inputs.component }}
+        run: |
+          set -euo pipefail
+          component="${COMPONENT_INPUT:-auto}"
+          backend=false
+          frontend=false
+
+          if [ "$component" != "auto" ]; then
+            case "$component" in
+              backend) backend=true ;;
+              frontend) frontend=true ;;
+              both) backend=true; frontend=true ;;
+              *)
+                echo "Invalid component selection: $component (expected auto/backend/frontend/both)"
+                exit 1
+                ;;
+            esac
+          else
+            base="origin/${{ steps.default-branch.outputs.value }}"
+            echo "Comparing changes against $base"
+            changed=$(git diff --name-only "$base"...HEAD || true)
+            echo "Changed files (relative to $base):"
+            if [ -n "$changed" ]; then
+              echo "$changed"
+            else
+              echo "(none)"
+            fi
+
+            if echo "$changed" | grep -E '^backend/' >/dev/null; then backend=true; fi
+            if echo "$changed" | grep -E '^frontend/' >/dev/null; then frontend=true; fi
+            if echo "$changed" | grep -E '^\\.github/workflows/' >/dev/null; then backend=true; frontend=true; fi
+
+            if [ "$backend" = false ] && [ "$frontend" = false ]; then
+              backend=true
+              frontend=true
+              echo "No component-specific changes detected; defaulting to deploy both."
+            fi
+          fi
+
+          {
+            echo "deploy_backend=$backend"
+            echo "deploy_frontend=$frontend"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "Deploy backend: ${{ steps.set.outputs.deploy_backend }}"
+          echo "Deploy frontend: ${{ steps.set.outputs.deploy_frontend }}"
 
   build-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
+    needs:
+      - detect-scope
     permissions:
       contents: read
       packages: write
@@ -89,6 +170,11 @@ jobs:
           echo "backend_image=ghcr.io/${{ github.repository_owner }}/codehustle-backend" >> "$GITHUB_OUTPUT"
           echo "frontend_image=ghcr.io/${{ github.repository_owner }}/codehustle-frontend" >> "$GITHUB_OUTPUT"
 
+      - name: Show deploy scope
+        run: |
+          echo "Deploy backend: ${{ needs.detect-scope.outputs.deploy_backend }}"
+          echo "Deploy frontend: ${{ needs.detect-scope.outputs.deploy_frontend }}"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
@@ -100,17 +186,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build backend image
+        if: needs.detect-scope.outputs.deploy_backend == 'true'
         run: |
           docker build -t "${{ steps.meta.outputs.backend_image }}:${{ steps.gitmeta.outputs.tag }}" -f backend/Dockerfile backend
 
       - name: Build frontend image
+        if: needs.detect-scope.outputs.deploy_frontend == 'true'
         run: |
           docker build -t "${{ steps.meta.outputs.frontend_image }}:${{ steps.gitmeta.outputs.tag }}" frontend
 
       - name: Push backend image
+        if: needs.detect-scope.outputs.deploy_backend == 'true'
         run: docker push "${{ steps.meta.outputs.backend_image }}:${{ steps.gitmeta.outputs.tag }}"
 
       - name: Push frontend image
+        if: needs.detect-scope.outputs.deploy_frontend == 'true'
         run: docker push "${{ steps.meta.outputs.frontend_image }}:${{ steps.gitmeta.outputs.tag }}"
 
   deploy:
@@ -119,6 +209,8 @@ jobs:
     needs:
       - decode-matrix
       - build-images
+      - detect-scope
+    if: ${{ needs.detect-scope.outputs.deploy_backend == 'true' || needs.detect-scope.outputs.deploy_frontend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -240,7 +332,11 @@ jobs:
             fi
 
             chmod +x deploy.sh
+            echo "Deploy backend: ${{ needs.detect-scope.outputs.deploy_backend }}"
+            echo "Deploy frontend: ${{ needs.detect-scope.outputs.deploy_frontend }}"
             BACKEND_IMAGE_REPO="${{ needs.build-images.outputs.backend_image }}" \
             FRONTEND_IMAGE_REPO="${{ needs.build-images.outputs.frontend_image }}" \
             IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
+            DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
+            DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
             ./deploy.sh
