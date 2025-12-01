@@ -51,17 +51,30 @@ if [ "$DEPLOY_BACKEND" = "true" ]; then
         docker-compose build ${SERVICES}
     fi
 
-    echo "Starting backend services..."
-    docker-compose up -d --remove-orphans
-
-    # Force recreate Caddy container if Caddyfile changed
+    # If Caddyfile changed, exclude Caddy from normal up and recreate it separately
     if [ "$RECREATE_CADDY" = "true" ]; then
-        echo "🔄 Caddyfile changed - forcing recreation of Caddy container..."
+        echo "🔄 Caddyfile changed - will recreate Caddy container separately..."
+        echo "Starting backend services (excluding Caddy)..."
+        docker-compose up -d --remove-orphans backend judge-worker cadvisor cloudflared
+        echo "Force recreating Caddy container with new Caddyfile..."
+        docker-compose stop caddy || true
+        docker-compose rm -f caddy || true
         docker-compose up -d --force-recreate --no-deps caddy
         echo "✓ Caddy container recreated with new Caddyfile"
+    else
+        echo "Starting backend services..."
+        docker-compose up -d --remove-orphans
     fi
 else
     echo "Skipping backend services (DEPLOY_BACKEND=false)"
+    # Even if backend deployment is skipped, recreate Caddy if Caddyfile changed
+    if [ "$RECREATE_CADDY" = "true" ]; then
+        echo "🔄 Caddyfile changed - recreating Caddy container..."
+        docker-compose stop caddy || true
+        docker-compose rm -f caddy || true
+        docker-compose up -d --force-recreate --no-deps caddy
+        echo "✓ Caddy container recreated with new Caddyfile"
+    fi
 fi
 
 if [ "$DEPLOY_FRONTEND" = "true" ]; then
