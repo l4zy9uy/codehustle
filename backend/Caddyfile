@@ -30,7 +30,7 @@ appv1.codehustle.space:80 {
 }
 
 # Frontend app - main domain (HTTP - for Cloudflare Tunnel)
-app.codehustle.space:80 {
+app.codehustle.space {
     encode zstd gzip
     log {
         output stdout
