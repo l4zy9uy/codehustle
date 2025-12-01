@@ -29,8 +29,58 @@ appv1.codehustle.space:80 {
     }
 }
 
+# Frontend app - main domain (HTTP - for Cloudflare Tunnel)
+app.codehustle.space:80 {
+    encode zstd gzip
+    log {
+        output stdout
+        format console {
+            time_format "2006-01-02 15:04:05"
+        }
+        level INFO
+    }
+    reverse_proxy codehustle-frontend:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+        health_uri /index.html
+        health_interval 10s
+        health_timeout 5s
+        fail_duration 5s
+        max_fails 3
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 60s
+            read_timeout 120s
+            write_timeout 120s
+            keepalive 30s
+            max_conns_per_host 0
+        }
+    }
+}
+
 # API endpoint
 apiv1.codehustle.space {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+    encode zstd gzip
+    log {
+        output stdout
+        format console {
+            time_format "2006-01-02 15:04:05"
+        }
+        level INFO
+    }
+    reverse_proxy backend:8081 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# API endpoint - main domain
+api.codehustle.space {
     tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
     encode zstd gzip
     log {
