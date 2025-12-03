@@ -24,15 +24,12 @@ ENV VITE_ENABLE_API_MOCKS=$VITE_ENABLE_API_MOCKS
 # Build the application
 RUN npm run build
 
-# Runtime stage: serve built assets with Nginx
-FROM nginx:1.27-alpine AS runtime
+# Runtime stage: serve built assets with a lightweight Node server
+FROM node:20-alpine AS runtime
+WORKDIR /app
 
-# Copy built assets
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Nginx config for SPA routing and API proxy
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN npm install -g serve@14
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "dist", "-l", "80"]

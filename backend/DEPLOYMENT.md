@@ -133,7 +133,7 @@ Internet
   ↓
 Cloudflare Tunnel / Load Balancer / direct
   ↓
-Frontend (Nginx static + /api proxy) - appv1.codehustle.space
+Frontend (static SPA server) - appv1.codehustle.space
   └─→ Backend API - apiv1.codehustle.space
        ├─→ MySQL Database
        ├─→ Redis (Queue)
@@ -157,8 +157,8 @@ If you use Cloudflare Tunnel, point the frontend hostname to `http://localhost:8
 
 ### Frontend (`codehustle-frontend`)
 - React application built with Vite
-- Served via Nginx (static + `/api` reverse proxy to backend:8081)
-- Port: 80 (host; configurable via `FRONTEND_PORT`)
+- Served via a lightweight Node static server (`serve -s dist`); set `VITE_API_HOST`/`VITE_API_BASE_URL` to call the API directly
+- Port: 80 (host; configurable via `FRONTEND_PORT`, default 3000 host mapping)
 
 ### MySQL (`codehustle-mysql`)
 - Database server
