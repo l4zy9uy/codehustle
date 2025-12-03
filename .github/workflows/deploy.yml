@@ -347,3 +347,137 @@ jobs:
             DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
             RECREATE_CADDY="${{ needs.detect-scope.outputs.recreate_caddy }}" \
             ./deploy.sh
+
+  gce-targets:
+    name: Prepare GCE Deploy Targets
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_b64: ${{ steps.collect.outputs.matrix_b64 }}
+    steps:
+      - id: collect
+        run: |
+          raw='${{ secrets.DEPLOY_TARGETS_GCE }}'
+          if [ -z "$raw" ]; then
+            raw='[{"name":"_none","skip":true}]'
+          fi
+          set +e
+          matrix=$(python3 -c "import json,sys; data=json.loads(sys.stdin.read()); data=[data] if not isinstance(data, list) else data; print(json.dumps(data))" <<<"$raw" 2>&1)
+          exit_code=$?
+          set -e
+          if [ $exit_code -ne 0 ]; then
+            echo "Error parsing JSON: $matrix"
+            matrix='[{"name":"_none","skip":true}]'
+          fi
+          matrix_b64=$(echo -n "$matrix" | base64 -w 0)
+          echo "matrix_b64=$matrix_b64" >> "$GITHUB_OUTPUT"
+          echo "Matrix encoded (length: ${#matrix_b64})"
+
+  gce-decode-matrix:
+    name: Decode GCE Matrix
+    runs-on: ubuntu-latest
+    needs: gce-targets
+    outputs:
+      matrix: ${{ steps.decode.outputs.matrix }}
+    steps:
+      - id: decode
+        run: |
+          matrix_b64='${{ needs.gce-targets.outputs.matrix_b64 }}'
+          if [ -z "$matrix_b64" ]; then
+            matrix='[{"name":"_none","skip":true}]'
+          else
+            matrix=$(echo -n "$matrix_b64" | base64 -d)
+          fi
+          delimiter="MATRIX_$(openssl rand -hex 16)"
+          {
+            echo "matrix<<${delimiter}"
+            echo "$matrix"
+            echo "${delimiter}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Matrix decoded and written"
+
+  deploy-gce:
+    name: Deploy GCE (${{ matrix.target.name }})
+    runs-on: ubuntu-latest
+    needs:
+      - gce-decode-matrix
+      - build-images
+      - detect-scope
+    if: ${{ needs.detect-scope.outputs.deploy_backend == 'true' || needs.detect-scope.outputs.deploy_frontend == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.gce-decode-matrix.outputs.matrix != '' && needs.gce-decode-matrix.outputs.matrix || '[{"name":"_none","skip":true}]') }}
+    steps:
+      - name: Skip deploy (no targets configured)
+        if: ${{ matrix.target.skip == true }}
+        run: |
+          echo "No GCE deployment targets configured (set DEPLOY_TARGETS_GCE secret). Skipping deploy."
+
+      - name: Run remote deployment (GCE)
+        if: ${{ matrix.target.skip != true && (github.event.inputs.host == '' || github.event.inputs.host == matrix.target.name) }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        env:
+          SSH_KEY_SECRET: ${{ matrix.target.key_secret || 'DEPLOY_SSH_KEY_GCE' }}
+          SSH_PASSPHRASE_SECRET: ${{ matrix.target.passphrase_secret || 'DEPLOY_SSH_KEY_GCE_PASSPHRASE' }}
+        with:
+          host: ${{ matrix.target.host }}
+          username: ${{ matrix.target.user }}
+          key: ${{ secrets[env.SSH_KEY_SECRET] }}
+          port: ${{ matrix.target.port || '22' }}
+          passphrase: ${{ secrets[env.SSH_PASSPHRASE_SECRET] }}
+          script: |
+            set -euo pipefail
+            REPO_HTTPS="${{ github.server_url }}/${{ github.repository }}"
+            REPO=$(echo "$REPO_HTTPS" | sed 's|https://github.com/|git@github.com:|' | sed 's|$|.git|')
+            REF="${{ github.event.inputs.ref }}"
+            COMMIT="${{ needs.build-images.outputs.image_tag }}"
+            WORKDIR="${{ matrix.target.path }}"
+
+            if [ -z "$WORKDIR" ]; then
+              echo "Deploy path for host '${{ matrix.target.name }}' is not configured."
+              exit 1
+            fi
+
+            if [ ! -d "$WORKDIR/.git" ]; then
+              echo "Cloning repository into $WORKDIR"
+              rm -rf "$WORKDIR"
+              git clone "$REPO" "$WORKDIR"
+            fi
+
+            cd "$WORKDIR"
+            git fetch origin "$REF"
+            git checkout "$COMMIT"
+            git reset --hard "$COMMIT"
+
+            cd backend
+            mkdir -p certs
+
+            if [ -n "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" ] && [ -n "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" ]; then
+              echo "Creating Cloudflare Origin Certificate files from secrets..."
+              echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" > certs/origin.pem
+              echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" > certs/origin.key
+              chmod 644 certs/origin.pem
+              chmod 600 certs/origin.key
+              echo "✓ Certificate files created"
+            else
+              echo "⚠️  Warning: CLOUDFLARE_ORIGIN_CERT and/or CLOUDFLARE_ORIGIN_KEY secrets not set."
+              echo "   Caddy will fail to start if certificates are required."
+              echo "   See backend/certs/README.md for setup instructions."
+            fi
+
+            if [ -n "${{ secrets.REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
+              echo "Logging into container registry..."
+              echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+            fi
+
+            chmod +x deploy.sh
+            echo "Deploy backend: ${{ needs.detect-scope.outputs.deploy_backend }}"
+            echo "Deploy frontend: ${{ needs.detect-scope.outputs.deploy_frontend }}"
+            echo "Recreate caddy: ${{ needs.detect-scope.outputs.recreate_caddy }}"
+            BACKEND_IMAGE_REPO="${{ needs.build-images.outputs.backend_image }}" \
+            FRONTEND_IMAGE_REPO="${{ needs.build-images.outputs.frontend_image }}" \
+            IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
+            DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
+            DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
+            RECREATE_CADDY="${{ needs.detect-scope.outputs.recreate_caddy }}" \
+            ./deploy.sh
