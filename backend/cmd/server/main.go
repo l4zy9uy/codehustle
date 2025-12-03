@@ -11,6 +11,7 @@ import (
 
 	"codehustle/backend/internal/config"
 	"codehustle/backend/internal/db"
+	"codehustle/backend/internal/handlers"
 	"codehustle/backend/internal/middleware"
 	"codehustle/backend/internal/queue"
 	"codehustle/backend/internal/routes"
@@ -56,6 +57,9 @@ func main() {
 
 	// CORS middleware
 	r.Use(middleware.CORSMiddleware())
+
+	// Health check endpoint
+	r.GET("/health", handlers.HealthCheck)
 
 	// Register API routes (auth middleware is applied per route group)
 	routes.RegisterRoutes(r)
