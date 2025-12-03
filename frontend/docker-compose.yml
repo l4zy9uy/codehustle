@@ -13,7 +13,7 @@ services:
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
         - VITE_ENABLE_API_MOCKS=${VITE_ENABLE_API_MOCKS:-false}
     ports:
-      - "3000:80"
+      - "${FRONTEND_PORT:-3000}:80"
     networks:
       - backend_web
     restart: unless-stopped

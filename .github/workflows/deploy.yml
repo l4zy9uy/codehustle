@@ -72,7 +72,6 @@ jobs:
     outputs:
       deploy_backend: ${{ steps.set.outputs.deploy_backend }}
       deploy_frontend: ${{ steps.set.outputs.deploy_frontend }}
-      recreate_caddy: ${{ steps.set.outputs.recreate_caddy }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -99,7 +98,6 @@ jobs:
           component="${COMPONENT_INPUT:-auto}"
           backend=false
           frontend=false
-          recreate_caddy=false
 
           if [ "$component" != "auto" ]; then
             case "$component" in
@@ -125,7 +123,6 @@ jobs:
             if echo "$changed" | grep -E '^backend/' >/dev/null; then backend=true; fi
             if echo "$changed" | grep -E '^frontend/' >/dev/null; then frontend=true; fi
             if echo "$changed" | grep -E '^\\.github/workflows/' >/dev/null; then backend=true; frontend=true; fi
-            if echo "$changed" | grep -E '^backend/Caddyfile$' >/dev/null; then recreate_caddy=true; fi
 
             if [ "$backend" = false ] && [ "$frontend" = false ]; then
               backend=true
@@ -137,14 +134,12 @@ jobs:
           {
             echo "deploy_backend=$backend"
             echo "deploy_frontend=$frontend"
-            echo "recreate_caddy=$recreate_caddy"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summary
         run: |
           echo "Deploy backend: ${{ steps.set.outputs.deploy_backend }}"
           echo "Deploy frontend: ${{ steps.set.outputs.deploy_frontend }}"
-          echo "Recreate Caddy: ${{ steps.set.outputs.recreate_caddy }}"
 
   build-images:
     name: Build & Push Images
@@ -314,23 +309,6 @@ jobs:
 
             cd backend
 
-            # Create certificate directory if it doesn't exist
-            mkdir -p certs
-
-            # Create certificate files from GitHub Secrets (if provided)
-            if [ -n "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" ] && [ -n "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" ]; then
-              echo "Creating Cloudflare Origin Certificate files from secrets..."
-              echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" > certs/origin.pem
-              echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" > certs/origin.key
-              chmod 644 certs/origin.pem
-              chmod 600 certs/origin.key
-              echo "✓ Certificate files created"
-            else
-              echo "⚠️  Warning: CLOUDFLARE_ORIGIN_CERT and/or CLOUDFLARE_ORIGIN_KEY secrets not set."
-              echo "   Caddy will fail to start if certificates are required."
-              echo "   See backend/certs/README.md for setup instructions."
-            fi
-
             if [ -n "${{ secrets.REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
               echo "Logging into container registry..."
               echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
@@ -339,13 +317,11 @@ jobs:
             chmod +x deploy.sh
             echo "Deploy backend: ${{ needs.detect-scope.outputs.deploy_backend }}"
             echo "Deploy frontend: ${{ needs.detect-scope.outputs.deploy_frontend }}"
-            echo "Recreate caddy: ${{ needs.detect-scope.outputs.recreate_caddy }}"
             BACKEND_IMAGE_REPO="${{ needs.build-images.outputs.backend_image }}" \
             FRONTEND_IMAGE_REPO="${{ needs.build-images.outputs.frontend_image }}" \
             IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
             DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
             DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
-            RECREATE_CADDY="${{ needs.detect-scope.outputs.recreate_caddy }}" \
             ./deploy.sh
 
   gce-targets:
@@ -459,20 +435,6 @@ jobs:
             sudo -u "$DEPLOY_USER" git reset --hard "$COMMIT"
 
             cd backend
-            sudo -u "$DEPLOY_USER" mkdir -p certs
-
-            if [ -n "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" ] && [ -n "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" ]; then
-              echo "Creating Cloudflare Origin Certificate files from secrets..."
-              echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" | sudo -u "$DEPLOY_USER" tee certs/origin.pem >/dev/null
-              echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" | sudo -u "$DEPLOY_USER" tee certs/origin.key >/dev/null
-              sudo chmod 644 certs/origin.pem
-              sudo chmod 600 certs/origin.key
-              echo "✓ Certificate files created"
-            else
-              echo "⚠️  Warning: CLOUDFLARE_ORIGIN_CERT and/or CLOUDFLARE_ORIGIN_KEY secrets not set."
-              echo "   Caddy will fail to start if certificates are required."
-              echo "   See backend/certs/README.md for setup instructions."
-            fi
 
             if [ -n "${{ secrets.REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
               echo "Logging into container registry..."
@@ -482,12 +444,10 @@ jobs:
             sudo -u "$DEPLOY_USER" chmod +x deploy.sh
             echo "Deploy backend: ${{ needs.detect-scope.outputs.deploy_backend }}"
             echo "Deploy frontend: ${{ needs.detect-scope.outputs.deploy_frontend }}"
-            echo "Recreate caddy: ${{ needs.detect-scope.outputs.recreate_caddy }}"
             sudo -u "$DEPLOY_USER" \
               BACKEND_IMAGE_REPO="${{ needs.build-images.outputs.backend_image }}" \
               FRONTEND_IMAGE_REPO="${{ needs.build-images.outputs.frontend_image }}" \
               IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
               DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
               DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
-              RECREATE_CADDY="${{ needs.detect-scope.outputs.recreate_caddy }}" \
               ./deploy.sh

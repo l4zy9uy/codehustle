@@ -12,10 +12,8 @@ to_bool() {
 
 DEPLOY_BACKEND=$(to_bool "${DEPLOY_BACKEND:-true}")
 DEPLOY_FRONTEND=$(to_bool "${DEPLOY_FRONTEND:-true}")
-RECREATE_CADDY=$(to_bool "${RECREATE_CADDY:-false}")
 echo "Deploy backend stack: ${DEPLOY_BACKEND}"
 echo "Deploy frontend stack: ${DEPLOY_FRONTEND}"
-echo "Recreate Caddy container: ${RECREATE_CADDY}"
 
 # Check if .env file exists
 if [ ! -f .env ]; then
@@ -32,7 +30,7 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 export IMAGE_TAG
 echo "🏷️  Using image tag: ${IMAGE_TAG}"
 
-SERVICES="backend caddy judge-worker cadvisor cloudflared"
+SERVICES="backend judge-worker cadvisor cloudflared"
 FRONTEND_DIR="../frontend"
 
 if [ "$DEPLOY_BACKEND" = "true" ] || [ "$DEPLOY_FRONTEND" = "true" ]; then
@@ -51,30 +49,10 @@ if [ "$DEPLOY_BACKEND" = "true" ]; then
         docker-compose build ${SERVICES}
     fi
 
-    # If Caddyfile changed, exclude Caddy from normal up and recreate it separately
-    if [ "$RECREATE_CADDY" = "true" ]; then
-        echo "🔄 Caddyfile changed - will recreate Caddy container separately..."
-        echo "Starting backend services (excluding Caddy)..."
-        docker-compose up -d --remove-orphans backend judge-worker cadvisor cloudflared
-        echo "Force recreating Caddy container with new Caddyfile..."
-        docker-compose stop caddy || true
-        docker-compose rm -f caddy || true
-        docker-compose up -d --force-recreate --no-deps caddy
-        echo "✓ Caddy container recreated with new Caddyfile"
-    else
-        echo "Starting backend services..."
-        docker-compose up -d --remove-orphans
-    fi
+    echo "Starting backend services..."
+    docker-compose up -d --remove-orphans
 else
     echo "Skipping backend services (DEPLOY_BACKEND=false)"
-    # Even if backend deployment is skipped, recreate Caddy if Caddyfile changed
-    if [ "$RECREATE_CADDY" = "true" ]; then
-        echo "🔄 Caddyfile changed - recreating Caddy container..."
-        docker-compose stop caddy || true
-        docker-compose rm -f caddy || true
-        docker-compose up -d --force-recreate --no-deps caddy
-        echo "✓ Caddy container recreated with new Caddyfile"
-    fi
 fi
 
 if [ "$DEPLOY_FRONTEND" = "true" ]; then

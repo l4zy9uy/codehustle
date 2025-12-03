@@ -24,19 +24,15 @@ ENV VITE_ENABLE_API_MOCKS=$VITE_ENABLE_API_MOCKS
 # Build the application
 RUN npm run build
 
-# Runtime stage: serve built assets with Caddy
-FROM caddy:2-alpine AS runtime
-WORKDIR /srv
+# Runtime stage: serve built assets with Nginx
+FROM nginx:1.27-alpine AS runtime
 
 # Copy built assets
-COPY --from=builder /app/dist /srv
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Caddy config for SPA routing and API proxy
-COPY Caddyfile /etc/caddy/Caddyfile
+# Nginx config for SPA routing and API proxy
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose HTTP
 EXPOSE 80
 
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
-
-# Output is in /app/dist - this will be uploaded to R2
+CMD ["nginx", "-g", "daemon off;"]

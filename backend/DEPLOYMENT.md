@@ -53,8 +53,6 @@ GOOGLE_REDIRECT_URI=https://apiv1.codehustle.space/api/v1/auth/google/callback
 VITE_API_BASE_URL=/api
 VITE_API_HOST=https://apiv1.codehustle.space
 VITE_GOOGLE_CLIENT_ID=<your-client-id>
-CADDY_HTTP_PORT=80
-CADDY_HTTPS_PORT=443
 TUNNEL_TOKEN=<cloudflare-tunnel-token>
 LOG_LEVEL=info
 LOG_FORMAT=json
@@ -111,11 +109,9 @@ Test endpoints:
 - Required GitHub secrets:
   - `DEPLOY_TARGETS`: JSON array (`[{ "name": "prod-a", "host": "xx.xx.xx.xx", "user": "root", "path": "/srv/codehustle", "port": "22" }, ...]`)
   - `DEPLOY_SSH_KEY` (+ optional `DEPLOY_SSH_KEY_PASSPHRASE`): private key that can SSH into every host listed in `DEPLOY_TARGETS`
+  - GCE lane: `DEPLOY_TARGETS_GCE` (+ `DEPLOY_SSH_KEY_GCE` / `DEPLOY_SSH_KEY_GCE_PASSPHRASE`) to deploy to GCE hosts via the `Deploy GCE` job. Targets accept `key_secret` / `passphrase_secret` overrides per host if you need mixed keys.
   - `REGISTRY_USERNAME` / `REGISTRY_PASSWORD`: credentials with `read:packages` access to GHCR (used on the droplet to `docker login`)
-  - `CLOUDFLARE_ORIGIN_CERT`: Cloudflare Origin Certificate (for TLS between Tunnel and Caddy)
-  - `CLOUDFLARE_ORIGIN_KEY`: Cloudflare Origin Certificate Private Key
 - Optional: limit a run to one host by providing its `name` when triggering the workflow; otherwise every host in the matrix deploys in parallel.
-- See `backend/certs/README.md` for instructions on obtaining Cloudflare Origin Certificates.
 
 ## Provisioning Hosts with Ansible
 
@@ -135,10 +131,9 @@ The playbook installs Docker + Compose, creates the deploy user, and clones this
 ```
 Internet
   ↓
-Cloudflare Tunnel (cloudflared)
+Cloudflare Tunnel / Load Balancer / direct
   ↓
-Caddy (Reverse Proxy)
-  ├─→ Frontend (Static Files) - appv1.codehustle.space
+Frontend (Nginx static + /api proxy) - appv1.codehustle.space
   └─→ Backend API - apiv1.codehustle.space
        ├─→ MySQL Database
        ├─→ Redis (Queue)
@@ -146,6 +141,8 @@ Caddy (Reverse Proxy)
        └─→ Piston (Code Executor)
   └─→ Judge Worker (Processes submissions)
 ```
+
+If you use Cloudflare Tunnel, point the frontend hostname to `http://localhost:80` (frontend container) and either rely on the frontend `/api` proxy or add a second ingress for the API at `http://localhost:8081`.
 
 ## Service Details
 
@@ -160,13 +157,8 @@ Caddy (Reverse Proxy)
 
 ### Frontend (`codehustle-frontend`)
 - React application built with Vite
-- Served via Caddy
-- Port: 80 (internal)
-
-### Caddy (`caddy`)
-- Reverse proxy and SSL termination
-- Routes requests to frontend and backend
-- Ports: 80, 443 (host)
+- Served via Nginx (static + `/api` reverse proxy to backend:8081)
+- Port: 80 (host; configurable via `FRONTEND_PORT`)
 
 ### MySQL (`codehustle-mysql`)
 - Database server
@@ -219,8 +211,8 @@ Caddy (Reverse Proxy)
 - Verify DB credentials in `.env`
 
 ### Frontend not loading
-- Check Caddy logs: `docker-compose logs caddy`
-- Verify Caddyfile syntax
+- Check frontend logs: `docker-compose logs frontend`
+- Verify frontend container is listening on the expected port (`FRONTEND_PORT`, default 80)
 - Check frontend build: `docker-compose logs frontend`
 
 ### Judge worker not processing jobs
@@ -279,7 +271,3 @@ Check resource usage:
 ```bash
 docker stats
 ```
-
-
-
-

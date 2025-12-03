@@ -121,30 +121,6 @@ services:
     ports:
       - "8081:8081"
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: codehustle-caddy
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_started
-    # Ports exposed for direct access testing
-    ports:
-      - "${CADDY_HTTP_PORT:-80}:80"
-      - "${CADDY_HTTPS_PORT:-443}:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./certs:/etc/caddy/certs:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    dns:
-      - 127.0.0.11
-    networks:
-      web:
-        aliases:
-          - caddy
-    logging: *default-logging
-
   judge-worker:
     image: "${BACKEND_IMAGE_REPO:-codehustle/backend}:${IMAGE_TAG:-latest}"
     build:
@@ -232,5 +208,3 @@ volumes:
   minio_data:
   piston_data:
   redis_data:
-  caddy_data:
-  caddy_config:
