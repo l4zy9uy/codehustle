@@ -432,32 +432,41 @@ jobs:
             REF="${{ github.event.inputs.ref }}"
             COMMIT="${{ needs.build-images.outputs.image_tag }}"
             WORKDIR="${{ matrix.target.path }}"
+            DEPLOY_USER="${{ matrix.target.deploy_user || 'amiselfish2025' }}"
 
             if [ -z "$WORKDIR" ]; then
               echo "Deploy path for host '${{ matrix.target.name }}' is not configured."
               exit 1
             fi
 
+            if ! command -v sudo >/dev/null 2>&1; then
+              echo "sudo is required on the target host."
+              exit 1
+            fi
+
+            sudo mkdir -p "$WORKDIR"
+            sudo chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$WORKDIR"
+
             if [ ! -d "$WORKDIR/.git" ]; then
               echo "Cloning repository into $WORKDIR"
-              rm -rf "$WORKDIR"
-              git clone "$REPO" "$WORKDIR"
+              sudo rm -rf "$WORKDIR"
+              sudo -u "$DEPLOY_USER" git clone "$REPO" "$WORKDIR"
             fi
 
             cd "$WORKDIR"
-            git fetch origin "$REF"
-            git checkout "$COMMIT"
-            git reset --hard "$COMMIT"
+            sudo -u "$DEPLOY_USER" git fetch origin "$REF"
+            sudo -u "$DEPLOY_USER" git checkout "$COMMIT"
+            sudo -u "$DEPLOY_USER" git reset --hard "$COMMIT"
 
             cd backend
-            mkdir -p certs
+            sudo -u "$DEPLOY_USER" mkdir -p certs
 
             if [ -n "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" ] && [ -n "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" ]; then
               echo "Creating Cloudflare Origin Certificate files from secrets..."
-              echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" > certs/origin.pem
-              echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" > certs/origin.key
-              chmod 644 certs/origin.pem
-              chmod 600 certs/origin.key
+              echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" | sudo -u "$DEPLOY_USER" tee certs/origin.pem >/dev/null
+              echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" | sudo -u "$DEPLOY_USER" tee certs/origin.key >/dev/null
+              sudo chmod 644 certs/origin.pem
+              sudo chmod 600 certs/origin.key
               echo "✓ Certificate files created"
             else
               echo "⚠️  Warning: CLOUDFLARE_ORIGIN_CERT and/or CLOUDFLARE_ORIGIN_KEY secrets not set."
@@ -470,14 +479,15 @@ jobs:
               echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
             fi
 
-            chmod +x deploy.sh
+            sudo -u "$DEPLOY_USER" chmod +x deploy.sh
             echo "Deploy backend: ${{ needs.detect-scope.outputs.deploy_backend }}"
             echo "Deploy frontend: ${{ needs.detect-scope.outputs.deploy_frontend }}"
             echo "Recreate caddy: ${{ needs.detect-scope.outputs.recreate_caddy }}"
-            BACKEND_IMAGE_REPO="${{ needs.build-images.outputs.backend_image }}" \
-            FRONTEND_IMAGE_REPO="${{ needs.build-images.outputs.frontend_image }}" \
-            IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
-            DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
-            DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
-            RECREATE_CADDY="${{ needs.detect-scope.outputs.recreate_caddy }}" \
-            ./deploy.sh
+            sudo -u "$DEPLOY_USER" \
+              BACKEND_IMAGE_REPO="${{ needs.build-images.outputs.backend_image }}" \
+              FRONTEND_IMAGE_REPO="${{ needs.build-images.outputs.frontend_image }}" \
+              IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
+              DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
+              DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
+              RECREATE_CADDY="${{ needs.detect-scope.outputs.recreate_caddy }}" \
+              ./deploy.sh
