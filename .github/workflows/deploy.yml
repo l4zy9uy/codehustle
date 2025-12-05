@@ -145,7 +145,7 @@ jobs:
     name: Build & Push Images
     runs-on: ubuntu-latest
     env:
-      VITE_API_HOST: https://api.codehustle.com
+      VITE_API_HOST: https://api.codehustle.space
     needs:
       - detect-scope
     permissions:
