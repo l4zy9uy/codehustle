@@ -5,6 +5,7 @@ import FilterToolbar from '../components/StudentHome/FilterToolbar';
 import ProblemsTable from '../components/StudentHome/ProblemsTable';
 import { getProblems, getTags } from '../lib/api/problems';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Problems(props) {
   const { problems: incomingProblems = [], tagsOptions: incomingTagsOptions = [] } = props;
@@ -13,6 +14,8 @@ export default function Problems(props) {
   
   const [problems, setProblems] = useState(incomingProblems);
   const [tagsOptions, setTagsOptions] = useState(incomingTagsOptions);
+
+  usePageTitle('Problems');
 
   // Pagination state
   const [page, setPage] = useState(1);

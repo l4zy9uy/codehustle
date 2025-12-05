@@ -5,6 +5,7 @@ import QuickStatsCard from '../components/Profile/QuickStatsCard';
 import RecentSubmissionsCard from '../components/Profile/RecentSubmissionsCard';
 import { getMyStats, getMyRecentSubmissions } from '../lib/api/users';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 /**
  * CodeHustle – Profile Page (Desktop-first)
@@ -70,6 +71,8 @@ export default function ProfilePage({ user: incomingUser, stats: incomingStats, 
         // Update from auth context if provided
         if (!incomingUser && ctxUser) setUser(ctxUser);
     }, [incomingUser, ctxUser]);
+
+    usePageTitle(user?.handle ? `${user.handle} - Profile` : 'Profile');
 
     useEffect(() => {
         if (!incomingStats) {

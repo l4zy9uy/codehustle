@@ -11,6 +11,7 @@ import {
 import { IconDeviceFloppy, IconFileText } from '@tabler/icons-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useProblemEditor } from '../../../hooks/useProblemEditor';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import BasicInfoTab from '../../../components/admin/problems/BasicInfoTab';
 import DescriptionTab from '../../../components/admin/problems/DescriptionTab';
 import TestCasesTab from '../../../components/admin/problems/TestCasesTab';
@@ -25,12 +26,15 @@ export default function ProblemEditor() {
     setProblemData,
     loading,
     testCases,
+    isEdit,
     handleSave,
     updateDescription,
     addTestCase,
     deleteTestCase,
     updateTestCaseFile,
   } = useProblemEditor();
+
+  usePageTitle(isEdit ? 'Edit Problem' : 'Create Problem');
 
   return (
     <>

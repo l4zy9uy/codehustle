@@ -5,10 +5,13 @@ import { notifications } from '@mantine/notifications';
 import { Box, Loader, Text } from '@mantine/core';
 import { STORAGE_KEYS } from '../constants';
 import { getApiUrl } from '../env';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function GoogleAuthCallback() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+
+    usePageTitle('Authenticating...');
 
     useEffect(() => {
         const code = searchParams.get('code');

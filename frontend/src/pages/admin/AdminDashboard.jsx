@@ -25,6 +25,7 @@ import AdminDashboardHeader from '../../components/admin/AdminDashboardHeader';
 import SettingsSection from '../../components/admin/SettingsSection';
 import { useAdminDashboard } from '../../hooks/useAdminDashboard';
 import { useAnnouncements } from '../../hooks/useAnnouncements';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { 
   severityColor, 
   announcementStatusColor, 
@@ -40,6 +41,8 @@ export default function AdminDashboard() {
   
   const [openParentSection, setOpenParentSection] = useState(null);
   const [activeChildSection, setActiveChildSection] = useState(null);
+
+  usePageTitle('Admin Dashboard');
   const [generateUsersForm, setGenerateUsersForm] = useState({
     count: 10,
     prefix: 'student',

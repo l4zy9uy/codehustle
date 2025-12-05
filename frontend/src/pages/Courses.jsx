@@ -24,6 +24,7 @@ import {
 import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { getCourses } from '../lib/api/courses';
 import { courses as mockCourses } from '../lib/api/mockData';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const statusMeta = {
   active: { label: 'Active now', color: 'teal' },
@@ -47,6 +48,8 @@ export default function Courses() {
   const [search, setSearch] = useState('');
   const [termFilter, setTermFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  usePageTitle('Courses');
 
   useEffect(() => {
     let cancelled = false;

@@ -19,6 +19,7 @@ import { IconSearch } from '@tabler/icons-react';
 import { getContests } from '../lib/api/contests';
 import { contests as mockContests } from '../lib/api/mockData';
 import { formatContestDate, formatWindowDuration } from '../utils/contestUtils';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Contests() {
   const navigate = useNavigate();
@@ -29,6 +30,8 @@ export default function Contests() {
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const pageSize = 10;
+
+  usePageTitle('Contests');
 
   const normalizeContest = (contest) => ({
     id: contest.id,

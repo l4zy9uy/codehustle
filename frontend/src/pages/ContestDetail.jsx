@@ -29,6 +29,7 @@ import ContestInfoTab from '../components/contests/ContestInfoTab';
 import ContestProblemsTab from '../components/contests/ContestProblemsTab';
 import ContestSubmissionsTab from '../components/contests/ContestSubmissionsTab';
 import ContestRankingsTab from '../components/contests/ContestRankingsTab';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function ContestDetail() {
   const { id } = useParams();
@@ -59,6 +60,8 @@ export default function ContestDetail() {
       loadSubmissions();
     }
   }, [activeTab, loadSubmissions]);
+
+  usePageTitle(contest?.name ? `${contest.name} - Contest` : 'Contest');
 
   useEffect(() => {
     if (activeTab === 'rankings') {

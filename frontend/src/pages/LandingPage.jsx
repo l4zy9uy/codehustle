@@ -28,6 +28,7 @@ import {
 
 import heroVideo from '../assets/hero-loop.mp4';     // adjust if needed
 import whiteLogo from '../assets/white_logo.png';    // or ../assets/logo.svg if you prefer
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const HEADER_H = 72;
 
@@ -38,6 +39,8 @@ const steps = [
 ];
 
 export default function LandingPage() {
+    usePageTitle('CodeHUSTle');
+
     return (
         <>
             {/* Fixed video background (hero only) */}

@@ -5,6 +5,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import AnnouncementCard from '../components/AnnouncementCard';
 import AnnouncementDetail from '../components/AnnouncementDetail';
 import { getAnnouncements, getAnnouncement, markAnnouncementRead } from '../lib/api/announcements';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const PAGE_SIZE = 5;
 
@@ -17,6 +18,8 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
+
+    usePageTitle('Announcements');
 
     useEffect(() => {
       let cancelled = false;
@@ -198,6 +201,16 @@ function AnnouncementDetailWrapper() {
         cancelled = true;
       };
     }, [id]);
+
+    usePageTitle(
+      announcement
+        ? announcement.title
+          ? `${announcement.title} - Announcement`
+          : 'Announcement'
+        : loading
+        ? 'Announcement'
+        : 'Announcement'
+    );
 
     if (loading) return <Text size="sm" c="dimmed">Loading...</Text>;
     if (error || !announcement) return <Text size="sm" c="red">Announcement not available.</Text>;

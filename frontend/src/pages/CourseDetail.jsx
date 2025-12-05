@@ -21,6 +21,7 @@ import { useFilteredProblems } from '../hooks/useFilteredProblems';
 import { getCourse, getCourseProblems } from '../lib/api/courses';
 import { courses as mockCourses, courseInfo as mockCourseInfo, courseProblems as mockCourseProblems } from '../lib/api/mockData';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -52,6 +53,12 @@ export default function CourseDetail() {
       .catch(() => {
         if (!cancelled) setCourse(fallbackCourse);
       });
+  }, [id, getMockCourse]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const fallbackProblems = mockCourseProblems[id] || [];
 
     getCourseProblems(id)
       .then((res) => {
@@ -66,7 +73,9 @@ export default function CourseDetail() {
     return () => {
       cancelled = true;
     };
-  }, [getMockCourse, id]);
+  }, [id]);
+
+  usePageTitle(course?.name ? `${course.name} - Course` : 'Course');
 
   const {
     query,

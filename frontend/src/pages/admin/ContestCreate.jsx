@@ -20,6 +20,7 @@ import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { Editor } from '@tinymce/tinymce-react';
 import { LOCAL_TINYMCE_SCRIPT } from '../../config/tinymce';
 import { createContest } from '../../lib/api/contests';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 const defaultEditorInit = {
   license_key: 'gpl',
@@ -44,6 +45,8 @@ export default function ContestCreate({ embedded = false, onSuccess = null, onCa
   const [statusActive, setStatusActive] = useState(true);
   const [allowedIps, setAllowedIps] = useState(['']);
   const [submitting, setSubmitting] = useState(false);
+
+  usePageTitle('Create Contest');
 
   const handleAddIpRow = () => setAllowedIps((prev) => [...prev, '']);
   const handleRemoveIpRow = (index) =>

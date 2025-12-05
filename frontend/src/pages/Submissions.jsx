@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Title, Text, Stack, Group, Badge, Paper, Divider } from '@mantine/core';
 import { listSubmissions } from '../lib/api/submissions';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Submissions() {
   const [items, setItems] = useState([]);
+
+  usePageTitle('Submissions');
 
   useEffect(() => {
     listSubmissions().then((res) => setItems(res.items || [])).catch(() => setItems([]));

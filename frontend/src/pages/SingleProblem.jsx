@@ -19,6 +19,7 @@ import ProblemTags from '../components/problems/ProblemTags';
 import CodeEditor from '../components/problems/CodeEditor';
 import SubmissionList from '../components/problems/SubmissionList';
 import { PANE_HEADER_H } from '../constants/problems';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function PaneHeader({ children }) {
   return (
@@ -108,6 +109,8 @@ export default function ProblemPage({ problem: incomingProblem, onSubmit, defaul
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang, source, problem]);
+
+  usePageTitle(problem?.title ? `${problem.title} - Problem` : 'Problem');
 
   const isLoading = !incomingProblem && loading;
 

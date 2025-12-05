@@ -23,6 +23,7 @@ import { COLORS, STORAGE_KEYS, OAUTH_CONFIG } from '../constants';
 import { ENV, getOAuthRedirectUri } from '../env';
 import { loginStyles } from './Login.styles';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 
 export default function Auth() {
@@ -61,6 +62,9 @@ export default function Auth() {
             setSearchParams({});
         }
     }, [resetSent, setSearchParams]);
+
+    // Set page title
+    usePageTitle(isForgotMode ? 'Forgot Password' : 'Login');
 
     // Handle Google Sign-In with Code Flow + PKCE
     const handleGoogleSignIn = useCallback(async () => {
@@ -204,7 +208,7 @@ export default function Auth() {
                                     label="Remember me"
                                     {...form.getInputProps('remember', { type: 'checkbox' })}
                                 />
-                                <Anchor component="button" size="sm" onClick={() => setIsForgotMode(true)}>
+                                <Anchor component="button" type="button" size="sm" onClick={() => setIsForgotMode(true)}>
                                     Forgot Password?
                                 </Anchor>
                             </Group>
