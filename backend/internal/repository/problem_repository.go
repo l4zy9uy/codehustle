@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
+
 	"codehustle/backend/internal/db"
 	"codehustle/backend/internal/models"
 	"codehustle/backend/internal/utils"
@@ -215,4 +217,47 @@ func DeleteProblem(problemID string) error {
 	return db.DB.Model(&models.Problem{}).
 		Where("id = ?", problemID).
 		Update("deleted_at", now).Error
+}
+
+// GetProblemBySlug retrieves a problem by slug
+func GetProblemBySlug(slug string) (*models.Problem, error) {
+	var problem models.Problem
+	err := db.DB.Where("slug = ? AND deleted_at IS NULL", slug).First(&problem).Error
+	if err != nil {
+		return nil, err
+	}
+	return &problem, nil
+}
+
+// UpdateProblemByID updates a problem by ID with a map of updates
+func UpdateProblemByID(problemID string, updates map[string]interface{}) error {
+	return db.DB.Model(&models.Problem{}).
+		Where("id = ?", problemID).
+		Updates(updates).Error
+}
+
+// AddTagToProblem adds a tag to a problem (creates tag if it doesn't exist)
+// Uses raw SQL since Tag model may not exist
+func AddTagToProblem(problemID, tagName string) error {
+	// First, get or create the tag using raw SQL
+	var tagID string
+	err := db.DB.Raw("SELECT id FROM tags WHERE name = ?", tagName).Scan(&tagID).Error
+	if err != nil || tagID == "" {
+		// Tag doesn't exist, create it
+		tagID = uuid.NewString()
+		if err := db.DB.Exec("INSERT INTO tags (id, name) VALUES (?, ?)", tagID, tagName).Error; err != nil {
+			return fmt.Errorf("failed to create tag: %w", err)
+		}
+	}
+
+	// Check if problem_tag relationship already exists
+	var count int64
+	db.DB.Raw("SELECT COUNT(*) FROM problem_tags WHERE problem_id = ? AND tag_id = ?", problemID, tagID).Scan(&count)
+	if count > 0 {
+		// Relationship already exists, return success
+		return nil
+	}
+
+	// Create problem_tag relationship
+	return db.DB.Exec("INSERT INTO problem_tags (problem_id, tag_id) VALUES (?, ?)", problemID, tagID).Error
 }

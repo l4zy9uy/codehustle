@@ -28,11 +28,35 @@ func RegisterRoutes(r *gin.Engine) {
 	protected.POST("/users/batch", middleware.RequireRole(constants.AdminRoles...), handlers.BatchCreateAccounts)
 	
 	// Admin user management routes
-	protected.GET("/admin/users", middleware.RequireRole(constants.AdminRoles...), handlers.ListAdminUsers)
-	protected.POST("/admin/users", middleware.RequireRole(constants.AdminRoles...), handlers.CreateAdminUser)
-	protected.PUT("/admin/users/:id", middleware.RequireRole(constants.AdminRoles...), handlers.UpdateAdminUser)
-	protected.DELETE("/admin/users", middleware.RequireRole(constants.AdminRoles...), handlers.DeleteAdminUsers)
-	protected.DELETE("/admin/users/:id", middleware.RequireRole(constants.AdminRoles...), handlers.DeleteAdminUsers)
+	admin := protected.Group("/admin")
+	admin.Use(middleware.RequireRole(constants.AdminRoles...))
+	admin.GET("/users", handlers.ListAdminUsers)
+	admin.POST("/users", handlers.CreateAdminUser)
+	admin.PUT("/users/:id", handlers.UpdateAdminUser)
+	admin.DELETE("/users", handlers.DeleteAdminUsers)
+	admin.DELETE("/users/:id", handlers.DeleteAdminUsers)
+
+	// Admin problem routes
+	admin.GET("/problems", handlers.AdminListProblems)
+	admin.GET("/problems/:id", handlers.AdminGetProblem)
+	admin.POST("/problems", handlers.AdminCreateProblem)
+	admin.PUT("/problems/:id", handlers.AdminUpdateProblem)
+	admin.DELETE("/problems/:id", handlers.AdminDeleteProblem)
+	admin.GET("/problems/:id/export", handlers.AdminExportProblem)
+	admin.POST("/problems/import", handlers.AdminImportProblem)
+
+	// Admin test case routes
+	admin.POST("/test_case", handlers.BulkUploadTestCases)
+	admin.GET("/test_case", handlers.DownloadTestCases)
+
+	// Admin contest problem routes
+	admin.GET("/contest/problem", handlers.AdminListContestProblems)
+	admin.GET("/contest/problem/:problem_id", handlers.AdminGetContestProblem)
+	admin.POST("/contest/problem", handlers.AdminAddProblemToContest)
+	admin.PUT("/contest/problem/:problem_id", handlers.AdminUpdateContestProblem)
+	admin.DELETE("/contest/problem/:problem_id", handlers.AdminRemoveProblemFromContest)
+	admin.POST("/contest_problem/make_public", handlers.AdminMakeContestProblemPublic)
+	admin.POST("/contest/add_problem_from_public", handlers.AdminAddProblemFromPublic)
 
 	// Course routes
 	protected.GET("/courses", middleware.RequireRole(constants.StudentRoles...), handlers.ListCourses)
