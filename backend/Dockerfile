@@ -22,6 +22,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/judge-worker ./cmd/judge-worker/ma
 # Build container-metadata-exporter binary (requires CGO for containerd client)
 RUN CGO_ENABLED=1 GOOS=linux go build -o /app/container-metadata-exporter ./cmd/container-metadata-exporter/main.go
 
+# Build create-admin utility
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/create-admin ./scripts/create_admin.go
+
 # Runtime stage
 FROM alpine:latest
 
@@ -31,7 +34,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy binaries from builder
-COPY --from=builder /app/server /app/judge-worker /app/container-metadata-exporter ./
+COPY --from=builder /app/server /app/judge-worker /app/container-metadata-exporter /app/create-admin ./
 
 # Copy SQL migrations so golang-migrate can find them at runtime
 COPY --from=builder /app/internal/db/migrations ./internal/db/migrations

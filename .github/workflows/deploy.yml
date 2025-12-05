@@ -327,6 +327,10 @@ jobs:
             IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
             DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
             DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
+            ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}" \
+            ADMIN_PASSWORD="${{ secrets.ADMIN_PASSWORD }}" \
+            ADMIN_FIRST_NAME="${{ secrets.ADMIN_FIRST_NAME }}" \
+            ADMIN_LAST_NAME="${{ secrets.ADMIN_LAST_NAME }}" \
             ./deploy.sh
 
   gce-targets:
@@ -455,4 +459,8 @@ jobs:
               IMAGE_TAG="${{ needs.build-images.outputs.image_tag }}" \
               DEPLOY_BACKEND="${{ needs.detect-scope.outputs.deploy_backend }}" \
               DEPLOY_FRONTEND="${{ needs.detect-scope.outputs.deploy_frontend }}" \
+              ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}" \
+              ADMIN_PASSWORD="${{ secrets.ADMIN_PASSWORD }}" \
+              ADMIN_FIRST_NAME="${{ secrets.ADMIN_FIRST_NAME }}" \
+              ADMIN_LAST_NAME="${{ secrets.ADMIN_LAST_NAME }}" \
               ./deploy.sh

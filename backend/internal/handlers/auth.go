@@ -115,13 +115,19 @@ func Login(c *gin.Context) {
 	// Retrieve user
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "invalid_credentials",
+			"message": "The email or password you entered is incorrect. Please try again.",
+		})
 		return
 	}
 
 	// Verify password
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "invalid_credentials",
+			"message": "The email or password you entered is incorrect. Please try again.",
+		})
 		return
 	}
 

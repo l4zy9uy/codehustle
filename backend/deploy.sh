@@ -75,6 +75,24 @@ if [ "$DEPLOY_BACKEND" = "true" ] || [ "$DEPLOY_FRONTEND" = "true" ]; then
     docker-compose ps
 fi
 
+# Create admin account if credentials are provided
+if [ "$DEPLOY_BACKEND" = "true" ] && [ -n "${ADMIN_EMAIL:-}" ] && [ -n "${ADMIN_PASSWORD:-}" ]; then
+    echo ""
+    echo "Creating admin account..."
+    ADMIN_FIRST_NAME="${ADMIN_FIRST_NAME:-Admin}"
+    ADMIN_LAST_NAME="${ADMIN_LAST_NAME:-User}"
+    
+    if docker exec codehustle-backend ./create-admin \
+        --email "${ADMIN_EMAIL}" \
+        --password "${ADMIN_PASSWORD}" \
+        --first-name "${ADMIN_FIRST_NAME}" \
+        --last-name "${ADMIN_LAST_NAME}" 2>&1; then
+        echo "✓ Admin account creation completed"
+    else
+        echo "⚠ Admin account creation failed or account already exists"
+    fi
+fi
+
 echo ""
 echo "Deployment complete!"
 echo ""
