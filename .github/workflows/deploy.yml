@@ -144,6 +144,8 @@ jobs:
   build-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
+    env:
+      VITE_API_HOST: https://api.codehustle.com
     needs:
       - detect-scope
     permissions:
@@ -193,7 +195,10 @@ jobs:
       - name: Build frontend image
         if: needs.detect-scope.outputs.deploy_frontend == 'true'
         run: |
-          docker build -t "${{ steps.meta.outputs.frontend_image }}:${{ steps.gitmeta.outputs.tag }}" frontend
+          docker build \
+            --build-arg VITE_API_HOST="${VITE_API_HOST}" \
+            -t "${{ steps.meta.outputs.frontend_image }}:${{ steps.gitmeta.outputs.tag }}" \
+            frontend
 
       - name: Push backend image
         if: needs.detect-scope.outputs.deploy_backend == 'true'
