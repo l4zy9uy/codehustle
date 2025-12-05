@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -297,7 +298,7 @@ func processSubmission(ctx context.Context, job *queue.JudgeJob) error {
 				"input_path":     tc.InputPath,
 				"error":          err,
 			}).Error("Error fetching input for test case")
-			repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, "system_error", intPtr(0), nil, nil)
+			repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, "system_error", intPtr(0), nil, nil, nil)
 			continue
 		}
 
@@ -310,7 +311,7 @@ func processSubmission(ctx context.Context, job *queue.JudgeJob) error {
 				"expected_output_path": tc.ExpectedOutputPath,
 				"error":                err,
 			}).Error("Error fetching expected output for test case")
-			repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, "system_error", intPtr(0), nil, nil)
+			repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, "system_error", intPtr(0), nil, nil, nil)
 			continue
 		}
 
@@ -337,7 +338,7 @@ func processSubmission(ctx context.Context, job *queue.JudgeJob) error {
 				"test_case_name": tc.Name,
 				"error":          err,
 			}).Error("Error executing code for test case")
-			repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, "system_error", intPtr(0), nil, nil)
+			repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, "system_error", intPtr(0), nil, nil, nil)
 			continue
 		}
 
@@ -359,6 +360,7 @@ func processSubmission(ctx context.Context, job *queue.JudgeJob) error {
 		score := 0
 		timeMs := 0
 		memoryKb := result.Run.Memory / 1024
+		var userOutputPath *string
 
 		// Store compile log from first test case (compile happens once per submission)
 		if compileLog == nil && result.Compile.Stderr != "" {
@@ -425,13 +427,31 @@ func processSubmission(ctx context.Context, job *queue.JudgeJob) error {
 					"score":          score,
 				}).Info("Test case passed")
 			} else {
-				logger.WithFields(logrus.Fields{
-					"submission_id":          submissionID,
-					"test_case_id":           tc.ID,
-					"test_case_name":         tc.Name,
-					"output_length":          len(result.Run.Stdout),
-					"expected_output_length": len(expectedBytes),
-				}).Debug("Test case failed - output mismatch")
+				// Wrong answer - store user output in MinIO
+				verdict = "wrong_answer"
+				outputBucket := storage.GetTestCasesBucket()
+				outputKey := fmt.Sprintf("submissions/%s/test_cases/%s/user_output.txt", submissionID, tc.ID)
+				
+				// Upload user output to MinIO
+				outputReader := strings.NewReader(result.Run.Stdout)
+				if err := storage.UploadFile(outputBucket, outputKey, outputReader, int64(len(result.Run.Stdout)), "text/plain"); err != nil {
+					logger.WithFields(logrus.Fields{
+						"submission_id":  submissionID,
+						"test_case_id":   tc.ID,
+						"test_case_name": tc.Name,
+						"error":          err,
+					}).Warn("Failed to store user output in MinIO")
+				} else {
+					userOutputPath = &outputKey
+					logger.WithFields(logrus.Fields{
+						"submission_id":          submissionID,
+						"test_case_id":           tc.ID,
+						"test_case_name":         tc.Name,
+						"output_length":          len(result.Run.Stdout),
+						"expected_output_length": len(expectedBytes),
+						"user_output_path":       outputKey,
+					}).Debug("Stored user output for wrong_answer test case")
+				}
 			}
 			// Accumulate run logs even if no error (for warnings, etc.)
 			if result.Run.Stderr != "" {
@@ -460,7 +480,7 @@ func processSubmission(ctx context.Context, job *queue.JudgeJob) error {
 		}
 
 		// Save test case result
-		if err := repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, verdict, intPtr(score), intPtr(timeMs), intPtr(memoryKb)); err != nil {
+		if err := repository.CreateOrUpdateSubmissionTestCase(submissionID, tc.ID, verdict, intPtr(score), intPtr(timeMs), intPtr(memoryKb), userOutputPath); err != nil {
 			logger.WithFields(logrus.Fields{
 				"submission_id":  submissionID,
 				"test_case_id":   tc.ID,

@@ -17,6 +17,7 @@ import (
 	"codehustle/backend/internal/models"
 	"codehustle/backend/internal/queue"
 	"codehustle/backend/internal/repository"
+	"codehustle/backend/internal/storage"
 )
 
 // SubmitProblemRequest represents the expected payload for submitting a problem solution
@@ -269,15 +270,19 @@ type ProblemInfo struct {
 }
 
 type TestCaseResultDetail struct {
-	ID         uint         `json:"id"`
-	TestCaseID string       `json:"test_case_id"`
-	TestCase   TestCaseInfo `json:"test_case"`
-	Status     string       `json:"status"`
-	Score      *int         `json:"score,omitempty"`
-	TimeMs     *int         `json:"time_ms,omitempty"`
-	MemoryKb   *int         `json:"memory_kb,omitempty"`
-	LogPath    *string      `json:"log_path,omitempty"`
-	CreatedAt  string       `json:"created_at"`
+	ID             uint         `json:"id"`
+	TestCaseID     string       `json:"test_case_id"`
+	TestCase       TestCaseInfo `json:"test_case"`
+	Status         string       `json:"status"`
+	Score          *int         `json:"score,omitempty"`
+	TimeMs         *int         `json:"time_ms,omitempty"`
+	MemoryKb       *int         `json:"memory_kb,omitempty"`
+	LogPath        *string      `json:"log_path,omitempty"`
+	CreatedAt      string       `json:"created_at"`
+	// Test case details for wrong_answer cases
+	Input          *string `json:"input,omitempty"`
+	ExpectedOutput *string `json:"expected_output,omitempty"`
+	UserOutput     *string `json:"user_output,omitempty"`
 }
 
 type TestCaseInfo struct {
@@ -371,13 +376,60 @@ func GetSubmission(c *gin.Context) {
 
 	// Build test case results
 	response.TestCaseResults = make([]TestCaseResultDetail, len(submission.TestCaseResults))
+	
+	// Check if we need to fetch test case details (for wrong_answer cases)
+	needTestDetails := false
+	for _, tc := range submission.TestCaseResults {
+		if tc.Status == "wrong_answer" {
+			needTestDetails = true
+			break
+		}
+	}
+
+	// Fetch test case details from MinIO if needed
+	bucketName := storage.GetTestCasesBucket()
+	var testCaseDetails map[string]struct {
+		input          string
+		expectedOutput string
+	}
+	if needTestDetails {
+		testCaseDetails = make(map[string]struct {
+			input          string
+			expectedOutput string
+		})
+		
+		for _, tc := range submission.TestCaseResults {
+			if tc.Status == "wrong_answer" && tc.TestCase.InputPath != "" {
+				// Fetch input
+				if inputBytes, err := storage.GetFile(bucketName, tc.TestCase.InputPath); err == nil {
+					// Fetch expected output
+					var expectedOutputBytes []byte
+					if tc.TestCase.ExpectedOutputPath != "" && !strings.Contains(tc.TestCase.ExpectedOutputPath, ".placeholder") {
+						if bytes, err := storage.GetFile(bucketName, tc.TestCase.ExpectedOutputPath); err == nil {
+							expectedOutputBytes = bytes
+						}
+					}
+					
+					testCaseDetails[tc.TestCaseID] = struct {
+						input          string
+						expectedOutput string
+					}{
+						input:          string(inputBytes),
+						expectedOutput: string(expectedOutputBytes),
+					}
+				}
+			}
+		}
+	}
+
 	for i, tc := range submission.TestCaseResults {
 		testCaseInfo := TestCaseInfo{
 			ID:       tc.TestCase.ID,
 			Name:     tc.TestCase.Name,
 			IsSample: tc.TestCase.IsSample,
 		}
-		response.TestCaseResults[i] = TestCaseResultDetail{
+		
+		result := TestCaseResultDetail{
 			ID:         tc.ID,
 			TestCaseID: tc.TestCaseID,
 			TestCase:   testCaseInfo,
@@ -388,6 +440,26 @@ func GetSubmission(c *gin.Context) {
 			LogPath:    tc.LogPath,
 			CreatedAt:  tc.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		}
+
+		// Add test case details for wrong_answer cases
+		if tc.Status == "wrong_answer" {
+			if details, ok := testCaseDetails[tc.TestCaseID]; ok {
+				result.Input = &details.input
+				if details.expectedOutput != "" {
+					result.ExpectedOutput = &details.expectedOutput
+				}
+			}
+			
+			// Fetch user output from MinIO if available
+			if tc.UserOutputPath != nil && *tc.UserOutputPath != "" {
+				if userOutputBytes, err := storage.GetFile(bucketName, *tc.UserOutputPath); err == nil {
+					userOutput := string(userOutputBytes)
+					result.UserOutput = &userOutput
+				}
+			}
+		}
+
+		response.TestCaseResults[i] = result
 	}
 
 	// Add summary if submission is completed
@@ -495,6 +567,122 @@ func ListSubmissions(c *gin.Context) {
 	}
 
 	// Get submissions
+	submissions, total, err := repository.ListSubmissions(userID, problemID, pageNum, pageSizeNum)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed_to_fetch_submissions",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Build response
+	items := make([]SubmissionListItem, len(submissions))
+	for i, sub := range submissions {
+		// Load problem info
+		problem, err := repository.GetProblem(sub.ProblemID)
+		if err != nil {
+			// If problem not found, use minimal info
+			items[i] = SubmissionListItem{
+				ID:            sub.ID,
+				ProblemID:     sub.ProblemID,
+				Problem:       ProblemInfo{ID: sub.ProblemID, Code: "", Name: "Unknown Problem"},
+				Language:      sub.Language,
+				Status:        sub.Status,
+				Score:         sub.Score,
+				ExecutionTime: sub.ExecutionTime,
+				MemoryUsage:   sub.MemoryUsage,
+				SubmittedAt:   sub.SubmittedAt.Format("2006-01-02T15:04:05Z"),
+			}
+			continue
+		}
+
+		items[i] = SubmissionListItem{
+			ID:            sub.ID,
+			ProblemID:     sub.ProblemID,
+			Problem:       ProblemInfo{ID: problem.ID, Code: problem.Slug, Name: problem.Title},
+			Language:      sub.Language,
+			Status:        sub.Status,
+			Score:         sub.Score,
+			ExecutionTime: sub.ExecutionTime,
+			MemoryUsage:   sub.MemoryUsage,
+			SubmittedAt:   sub.SubmittedAt.Format("2006-01-02T15:04:05Z"),
+		}
+	}
+
+	c.JSON(http.StatusOK, ListSubmissionsResponse{
+		Submissions: items,
+		Total:       total,
+		Page:        pageNum,
+		PageSize:    pageSizeNum,
+	})
+}
+
+// GetProblemSubmissions returns submissions for a specific problem
+func GetProblemSubmissions(c *gin.Context) {
+	problemID := c.Param("id")
+	if problemID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing_problem_id"})
+		return
+	}
+
+	// Get pagination parameters
+	page := c.DefaultQuery("page", "1")
+	pageSize := c.DefaultQuery("page_size", "25")
+	requestedUserID := c.Query("user_id")
+
+	pageNum, err := strconv.Atoi(page)
+	if err != nil || pageNum < 1 {
+		pageNum = 1
+	}
+
+	pageSizeNum, err := strconv.Atoi(pageSize)
+	if err != nil || pageSizeNum < 1 {
+		pageSizeNum = 25
+	}
+	if pageSizeNum > 100 {
+		pageSizeNum = 100
+	}
+
+	// Get user context
+	userCtx, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing_user_context"})
+		return
+	}
+
+	userCtxVal, ok := userCtx.(middleware.UserContext)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_user_context"})
+		return
+	}
+
+	// Verify problem exists
+	_, err = repository.GetProblem(problemID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "problem_not_found",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Determine userID filter
+	userID := ""
+	isPrivileged := constants.HasAnyRole(userCtxVal.Roles, constants.PrivilegedRoles)
+
+	if isPrivileged {
+		// Admin/instructor: can use user_id query parameter if provided, otherwise show all
+		if requestedUserID != "" {
+			userID = requestedUserID
+		}
+		// If requestedUserID is empty, userID stays empty (shows all users)
+	} else {
+		// Regular users: always filter by their own ID (ignore user_id parameter for security)
+		userID = userCtxVal.ID
+	}
+
+	// Get submissions for this problem
 	submissions, total, err := repository.ListSubmissions(userID, problemID, pageNum, pageSizeNum)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -475,6 +475,68 @@ func RegisterForContest(c *gin.Context) {
 	})
 }
 
+// VerifyContestPassword verifies the password for a contest without registering
+func VerifyContestPassword(c *gin.Context) {
+	contestID := c.Param("id")
+
+	userCtx, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	user, ok := userCtx.(middleware.UserContext)
+	if !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Invalid user context"})
+		return
+	}
+
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf("[CONTEST] VerifyContestPassword: contestID=%s, userID=%s", contestID, user.ID)
+
+	userRole := getPrimaryRole(user.Roles)
+
+	// Get contest
+	contest, _, err := repository.GetContest(contestID, user.ID, userRole)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contest not found"})
+		return
+	}
+
+	// Check if contest requires password
+	if !contest.RequiresPassword() {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "contest_does_not_require_password",
+			"message": "This contest does not require a password",
+		})
+		return
+	}
+
+	// Verify password
+	err = bcrypt.CompareHashAndPassword([]byte(*contest.Password), []byte(req.Password))
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "invalid_password",
+			"message": "Invalid password",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"message":    "Password verified successfully",
+		"contest_id": contestID,
+	})
+}
+
 // UnregisterFromContest removes the current user's registration from a contest
 func UnregisterFromContest(c *gin.Context) {
 	contestID := c.Param("id")

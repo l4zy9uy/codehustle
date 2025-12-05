@@ -27,15 +27,16 @@ type Submission struct {
 
 // SubmissionTestCase represents per-test-case results
 type SubmissionTestCase struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	SubmissionID string    `gorm:"type:char(36);not null;column:submission_id;index" json:"submission_id"`
-	TestCaseID   string    `gorm:"type:char(36);not null;column:test_case_id;index" json:"test_case_id"`
-	Status       string    `gorm:"size:50;not null" json:"status"` // accepted, wrong_answer, compile_error, runtime_error, time_limit_exceeded, memory_limit_exceeded, system_error
-	Score        *int      `json:"score,omitempty"`
-	TimeMs       *int      `gorm:"column:time_ms" json:"time_ms,omitempty"`
-	MemoryKb     *int      `gorm:"column:memory_kb" json:"memory_kb,omitempty"`
-	LogPath      *string   `gorm:"type:text;column:log_path" json:"log_path,omitempty"`
-	CreatedAt    time.Time `gorm:"autoCreateTime;column:created_at" json:"created_at"`
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	SubmissionID   string    `gorm:"type:char(36);not null;column:submission_id;index" json:"submission_id"`
+	TestCaseID     string    `gorm:"type:char(36);not null;column:test_case_id;index" json:"test_case_id"`
+	Status         string    `gorm:"size:50;not null" json:"status"` // accepted, wrong_answer, compile_error, runtime_error, time_limit_exceeded, memory_limit_exceeded, system_error
+	Score          *int      `json:"score,omitempty"`
+	TimeMs         *int      `gorm:"column:time_ms" json:"time_ms,omitempty"`
+	MemoryKb       *int      `gorm:"column:memory_kb" json:"memory_kb,omitempty"`
+	LogPath        *string   `gorm:"type:text;column:log_path" json:"log_path,omitempty"`
+	UserOutputPath *string   `gorm:"type:text;column:user_output_path" json:"user_output_path,omitempty"`
+	CreatedAt      time.Time `gorm:"autoCreateTime;column:created_at" json:"created_at"`
 
 	// Relations
 	TestCase TestCase `gorm:"foreignKey:TestCaseID" json:"test_case,omitempty"`

@@ -46,7 +46,7 @@ func UpdateSubmissionStatus(submissionID string, status string, score *int, exec
 }
 
 // CreateOrUpdateSubmissionTestCase creates or updates a test case result
-func CreateOrUpdateSubmissionTestCase(submissionID, testCaseID string, status string, score *int, timeMs *int, memoryKb *int) error {
+func CreateOrUpdateSubmissionTestCase(submissionID, testCaseID string, status string, score *int, timeMs *int, memoryKb *int, userOutputPath *string) error {
 	testCaseResult := models.SubmissionTestCase{
 		SubmissionID: submissionID,
 		TestCaseID:   testCaseID,
@@ -54,15 +54,17 @@ func CreateOrUpdateSubmissionTestCase(submissionID, testCaseID string, status st
 		Score:        score,
 		TimeMs:       timeMs,
 		MemoryKb:     memoryKb,
+		UserOutputPath: userOutputPath,
 	}
 
 	// Use ON DUPLICATE KEY UPDATE equivalent in GORM
 	return db.DB.Where("submission_id = ? AND test_case_id = ?", submissionID, testCaseID).
 		Assign(models.SubmissionTestCase{
-			Status:   status,
-			Score:    score,
-			TimeMs:   timeMs,
-			MemoryKb: memoryKb,
+			Status:         status,
+			Score:          score,
+			TimeMs:         timeMs,
+			MemoryKb:       memoryKb,
+			UserOutputPath: userOutputPath,
 		}).
 		FirstOrCreate(&testCaseResult).Error
 }

@@ -87,3 +87,24 @@ func GetFile(bucketName string, objectKey string) ([]byte, error) {
 func GetProblemStatementsBucket() string {
 	return config.Get("BUCKET_PROBLEM_STATEMENTS")
 }
+
+// GetTestCasesBucket returns the bucket name for test cases
+func GetTestCasesBucket() string {
+	bucket := config.Get("BUCKET_TEST_CASES")
+	if bucket == "" {
+		return "test-cases"
+	}
+	return bucket
+}
+
+// DeleteFile deletes a file from MinIO
+func DeleteFile(bucketName string, objectKey string) error {
+	ctx := context.Background()
+
+	err := minioClient.RemoveObject(ctx, bucketName, objectKey, minio.RemoveObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete object: %w", err)
+	}
+
+	return nil
+}
