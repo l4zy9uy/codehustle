@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
 	"codehustle/backend/internal/constants"
@@ -133,13 +135,120 @@ func ListAdminUsers(c *gin.Context) {
 	if err != nil {
 		log.Printf("[ADMIN_USER] Failed to list users: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_list_users",
+			"error":   "failed_to_fetch_users",
 			"message": err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// ExportUsers exports users to Excel file (Admin only)
+func ExportUsers(c *gin.Context) {
+	// Get user context
+	userCtx, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing_user_context"})
+		return
+	}
+
+	userCtxVal, ok := userCtx.(middleware.UserContext)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_user_context"})
+		return
+	}
+
+	// Check authorization: must be admin
+	if !constants.HasAnyRole(userCtxVal.Roles, constants.AdminRoles) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient_permissions"})
+		return
+	}
+
+	// Get all users (no pagination for export)
+	result, err := repository.ListUsers(1, 10000, "")
+	if err != nil {
+		log.Printf("[ADMIN_USER] Failed to list users for export: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed_to_fetch_users",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Create Excel file
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("[ADMIN_USER] Failed to close Excel file: %v", err)
+		}
+	}()
+
+	sheetName := "Users"
+	index, err := f.NewSheet(sheetName)
+	if err != nil {
+		log.Printf("[ADMIN_USER] Failed to create sheet: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed_to_create_excel"})
+		return
+	}
+
+	// Set active sheet
+	f.SetActiveSheet(index)
+
+	// Delete default sheet
+	f.DeleteSheet("Sheet1")
+
+	// Set headers
+	headers := []string{"ID", "Email", "First Name", "Last Name", "Is Active", "Email Verified", "Last Login At", "Created At", "Roles"}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+
+	// Style headers
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"#E0E0E0"}, Pattern: 1},
+	})
+	if err == nil {
+		f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
+	}
+
+	// Write data
+	for i, user := range result.Users {
+		row := i + 2
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), user.ID)
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), user.Email)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), user.FirstName)
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), user.LastName)
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), user.IsActive)
+		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), user.EmailVerified)
+		if user.LastLoginAt != nil {
+			f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), *user.LastLoginAt)
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), user.CreatedAt)
+		f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), strings.Join(user.Roles, ", "))
+	}
+
+	// Auto-fit columns
+	for i := 0; i < len(headers); i++ {
+		col := string(rune('A' + i))
+		f.SetColWidth(sheetName, col, col, 15)
+	}
+
+	// Set response headers
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename=users.xlsx")
+	c.Header("Content-Transfer-Encoding", "binary")
+
+	// Write Excel file to response
+	if err := f.Write(c.Writer); err != nil {
+		log.Printf("[ADMIN_USER] Failed to write Excel file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed_to_write_excel"})
+		return
+	}
+
+	log.Printf("[ADMIN_USER] Exported %d users to Excel by admin %s", len(result.Users), userCtxVal.ID)
 }
 
 // CreateAdminUser handles POST /api/v1/admin/users - create a new user
@@ -172,12 +281,12 @@ func CreateAdminUser(c *gin.Context) {
 		return
 	}
 
-	// Check if email already exists
+	// Check if user already exists
 	existingUser, _ := repository.GetUserByEmail(req.Email)
 	if existingUser != nil {
 		c.JSON(http.StatusConflict, gin.H{
 			"error":   "email_already_exists",
-			"message": "An account with this email already exists",
+			"message": fmt.Sprintf("User with email '%s' already exists", req.Email),
 		})
 		return
 	}
@@ -185,10 +294,14 @@ func CreateAdminUser(c *gin.Context) {
 	// Hash password
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could_not_hash_password"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed_to_hash_password",
+			"message": err.Error(),
+		})
 		return
 	}
 
+	// Set defaults
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
@@ -196,7 +309,7 @@ func CreateAdminUser(c *gin.Context) {
 
 	// Create user
 	userID := uuid.NewString()
-	user := models.User{
+	user := &models.User{
 		ID:            userID,
 		Email:         req.Email,
 		PasswordHash:  string(hash),
@@ -206,7 +319,7 @@ func CreateAdminUser(c *gin.Context) {
 		EmailVerified: false,
 	}
 
-	if err := repository.CreateUser(&user); err != nil {
+	if err := repository.CreateUser(user); err != nil {
 		log.Printf("[ADMIN_USER] Failed to create user: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed_to_create_user",
@@ -215,21 +328,31 @@ func CreateAdminUser(c *gin.Context) {
 		return
 	}
 
-	// Assign roles if provided
+	// Assign roles
 	if len(req.Roles) > 0 {
 		if err := repository.SetUserRoles(userID, req.Roles); err != nil {
 			log.Printf("[ADMIN_USER] Failed to assign roles: %v", err)
 			// Continue even if role assignment fails
 		}
 	} else {
-		// Assign default student role
+		// Default to student role if no roles specified
 		if err := repository.AssignRole(userID, constants.RoleStudent); err != nil {
 			log.Printf("[ADMIN_USER] Failed to assign default student role: %v", err)
 		}
 	}
 
-	// Fetch user with roles for response
-	createdUser, roles, _ := repository.GetUserByID(userID)
+	log.Printf("[ADMIN_USER] Created user %s by admin %s", userID, userCtxVal.ID)
+
+	// Get created user with roles
+	createdUser, roles, err := repository.GetUserByID(userID)
+	if err != nil {
+		c.JSON(http.StatusCreated, gin.H{
+			"id":      userID,
+			"email":   req.Email,
+			"message": "User created successfully",
+		})
+		return
+	}
 
 	lastLoginAt := ""
 	if createdUser.LastLoginAt != nil {
@@ -249,7 +372,6 @@ func CreateAdminUser(c *gin.Context) {
 		Roles:         roles,
 	}
 
-	log.Printf("[ADMIN_USER] Created user %s (%s) by admin %s", userID, req.Email, userCtxVal.ID)
 	c.JSON(http.StatusCreated, response)
 }
 
@@ -280,8 +402,8 @@ func UpdateAdminUser(c *gin.Context) {
 		return
 	}
 
-	// Get existing user
-	user, _, err := repository.GetUserByID(userID)
+	// Verify user exists
+	existingUser, _, err := repository.GetUserByID(userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":   "user_not_found",
@@ -300,64 +422,97 @@ func UpdateAdminUser(c *gin.Context) {
 	}
 
 	// Update fields if provided
-	if req.Email != nil {
-		// Check if email already exists (excluding current user)
-		existingUser, _ := repository.GetUserByEmail(*req.Email)
-		if existingUser != nil && existingUser.ID != userID {
+	updates := make(map[string]interface{})
+	if req.Email != nil && *req.Email != existingUser.Email {
+		// Check if new email already exists
+		emailUser, _ := repository.GetUserByEmail(*req.Email)
+		if emailUser != nil && emailUser.ID != userID {
 			c.JSON(http.StatusConflict, gin.H{
 				"error":   "email_already_exists",
-				"message": "An account with this email already exists",
+				"message": fmt.Sprintf("User with email '%s' already exists", *req.Email),
 			})
 			return
 		}
-		user.Email = *req.Email
+		updates["email"] = *req.Email
 	}
-
-	if req.Password != nil && *req.Password != "" {
+	if req.FirstName != nil {
+		updates["first_name"] = *req.FirstName
+	}
+	if req.LastName != nil {
+		updates["last_name"] = *req.LastName
+	}
+	if req.IsActive != nil {
+		updates["is_active"] = *req.IsActive
+	}
+	if req.EmailVerified != nil {
+		updates["email_verified"] = *req.EmailVerified
+	}
+	if req.Password != nil {
 		hash, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could_not_hash_password"})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed_to_hash_password",
+				"message": err.Error(),
+			})
 			return
 		}
-		user.PasswordHash = string(hash)
-	}
-
-	if req.FirstName != nil {
-		user.FirstName = *req.FirstName
-	}
-
-	if req.LastName != nil {
-		user.LastName = *req.LastName
-	}
-
-	if req.IsActive != nil {
-		user.IsActive = *req.IsActive
-	}
-
-	if req.EmailVerified != nil {
-		user.EmailVerified = *req.EmailVerified
+		updates["password_hash"] = string(hash)
 	}
 
 	// Update user
-	if err := repository.UpdateUser(user); err != nil {
-		log.Printf("[ADMIN_USER] Failed to update user: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_update_user",
-			"message": err.Error(),
-		})
-		return
+	if len(updates) > 0 {
+		// Apply updates to existing user
+		if email, ok := updates["email"].(string); ok {
+			existingUser.Email = email
+		}
+		if firstName, ok := updates["first_name"].(string); ok {
+			existingUser.FirstName = firstName
+		}
+		if lastName, ok := updates["last_name"].(string); ok {
+			existingUser.LastName = lastName
+		}
+		if isActive, ok := updates["is_active"].(bool); ok {
+			existingUser.IsActive = isActive
+		}
+		if emailVerified, ok := updates["email_verified"].(bool); ok {
+			existingUser.EmailVerified = emailVerified
+		}
+		if passwordHash, ok := updates["password_hash"].(string); ok {
+			existingUser.PasswordHash = passwordHash
+		}
+		if err := repository.UpdateUser(existingUser); err != nil {
+			log.Printf("[ADMIN_USER] Failed to update user: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed_to_update_user",
+				"message": err.Error(),
+			})
+			return
+		}
 	}
 
 	// Update roles if provided
 	if req.Roles != nil {
 		if err := repository.SetUserRoles(userID, req.Roles); err != nil {
 			log.Printf("[ADMIN_USER] Failed to update roles: %v", err)
-			// Continue even if role update fails
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed_to_update_roles",
+				"message": err.Error(),
+			})
+			return
 		}
 	}
 
-	// Fetch updated user with roles
-	updatedUser, roles, _ := repository.GetUserByID(userID)
+	log.Printf("[ADMIN_USER] Updated user %s by admin %s", userID, userCtxVal.ID)
+
+	// Get updated user with roles
+	updatedUser, roles, err := repository.GetUserByID(userID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "User updated successfully",
+			"id":      userID,
+		})
+		return
+	}
 
 	lastLoginAt := ""
 	if updatedUser.LastLoginAt != nil {
@@ -377,11 +532,10 @@ func UpdateAdminUser(c *gin.Context) {
 		Roles:         roles,
 	}
 
-	log.Printf("[ADMIN_USER] Updated user %s by admin %s", userID, userCtxVal.ID)
 	c.JSON(http.StatusOK, response)
 }
 
-// DeleteAdminUsers handles DELETE /api/v1/admin/users - delete user(s)
+// DeleteAdminUsers handles DELETE /api/v1/admin/users (bulk) and DELETE /api/v1/admin/users/:id (single)
 func DeleteAdminUsers(c *gin.Context) {
 	// Get user context
 	userCtx, exists := c.Get("user")
@@ -402,7 +556,7 @@ func DeleteAdminUsers(c *gin.Context) {
 		return
 	}
 
-	// Check if deleting single user via URL param
+	// Check if deleting single user (from URL param) or bulk (from body)
 	userID := c.Param("id")
 	var userIDs []string
 
@@ -410,35 +564,25 @@ func DeleteAdminUsers(c *gin.Context) {
 		// Single user deletion via URL parameter
 		userIDs = []string{userID}
 	} else {
-		// Bulk deletion via query parameter (comma-separated) or request body
-		idsParam := c.Query("id")
-		if idsParam != "" {
-			// Comma-separated IDs in query param (like QDUOJ)
-			userIDs = strings.Split(idsParam, ",")
-		} else {
-			// Try request body
-			var req DeleteUsersRequest
-			if err := c.ShouldBindJSON(&req); err == nil && len(req.UserIDs) > 0 {
-				userIDs = req.UserIDs
-			} else {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error":   "missing_user_ids",
-					"message": "User ID(s) required via URL param, query param, or request body",
-				})
-				return
-			}
-		}
-	}
-
-	// Prevent self-deletion
-	for _, id := range userIDs {
-		if id == userCtxVal.ID {
+		// Bulk deletion via request body
+		var req DeleteUsersRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "cannot_delete_self",
-				"message": "You cannot delete your own account",
+				"error":   "invalid_request",
+				"message": err.Error(),
 			})
 			return
 		}
+
+		if len(req.UserIDs) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "missing_user_ids",
+				"message": "At least one user ID is required",
+			})
+			return
+		}
+
+		userIDs = req.UserIDs
 	}
 
 	// Delete users
@@ -451,7 +595,7 @@ func DeleteAdminUsers(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[ADMIN_USER] Deleted %d user(s) by admin %s", len(userIDs), userCtxVal.ID)
+	log.Printf("[ADMIN_USER] Deleted %d users by admin %s", len(userIDs), userCtxVal.ID)
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "Users deleted successfully",
 		"deleted_ids": userIDs,

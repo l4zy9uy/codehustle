@@ -27,17 +27,17 @@ type ListContestsResponse struct {
 
 // ContestListItem represents a single contest in the list
 type ContestListItem struct {
-	ID                       string    `json:"id"`
-	Title                    string    `json:"title"`
-	StartAt                  time.Time `json:"start_at"`
-	EndAt                    time.Time `json:"end_at"`
-	IsPublic                 bool      `json:"is_public"`
-	Status                   string    `json:"status"`
-	ParticipantCount         int64     `json:"participant_count"`
-	ProblemCount             int64     `json:"problem_count"`
-	RuleType                 string    `json:"rule_type"`
-	RequiresPassword         bool      `json:"requires_password"`
-	IsRegistered             bool      `json:"is_registered,omitempty"`
+	ID               string    `json:"id"`
+	Title            string    `json:"title"`
+	StartAt          time.Time `json:"start_at"`
+	EndAt            time.Time `json:"end_at"`
+	IsPublic         bool      `json:"is_public"`
+	Status           string    `json:"status"`
+	ParticipantCount int64     `json:"participant_count"`
+	ProblemCount     int64     `json:"problem_count"`
+	RuleType         string    `json:"rule_type"`
+	RequiresPassword bool      `json:"requires_password"`
+	IsRegistered     bool      `json:"is_registered,omitempty"`
 }
 
 // ListContests returns paginated contests
@@ -209,6 +209,37 @@ func GetContest(contestID, userID, userRole string) (*models.Contest, bool, erro
 	return &contest, isRegistered, nil
 }
 
+// CheckContestAccess checks if a user has access to a contest and returns detailed access information
+func CheckContestAccess(contestID, userID, userRole string) (*models.Contest, bool, bool, error) {
+	dbConn := getDB()
+
+	var contest models.Contest
+	if err := dbConn.Where("id = ? AND deleted_at IS NULL", contestID).First(&contest).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, false, false, fmt.Errorf("contest not found")
+		}
+		return nil, false, false, fmt.Errorf("failed to fetch contest: %w", err)
+	}
+
+	// Check if user is registered
+	isRegistered := false
+	if userID != "" {
+		var count int64
+		dbConn.Model(&models.ContestParticipant{}).
+			Where("contest_id = ? AND user_id = ?", contestID, userID).
+			Count(&count)
+		isRegistered = count > 0
+	}
+
+	// Check access: must be public, or user must be registered/admin/creator
+	canAccess := contest.IsPublic ||
+		isRegistered ||
+		userRole == constants.RoleAdmin ||
+		contest.CreatedBy == userID
+
+	return &contest, isRegistered, canAccess, nil
+}
+
 // CreateContest creates a new contest
 func CreateContest(contest *models.Contest) error {
 	dbConn := getDB()
@@ -337,10 +368,10 @@ func ListContestProblems(contestID string) ([]ContestProblemItem, error) {
 
 	var problems []struct {
 		models.ContestProblem
-		Title      string `gorm:"column:title"`
-		Difficulty string `gorm:"column:difficulty"`
-		TimeLimitMs   int `gorm:"column:problem_time_limit_ms"`
-		MemoryLimitKb int `gorm:"column:problem_memory_limit_kb"`
+		Title         string `gorm:"column:title"`
+		Difficulty    string `gorm:"column:difficulty"`
+		TimeLimitMs   int    `gorm:"column:problem_time_limit_ms"`
+		MemoryLimitKb int    `gorm:"column:problem_memory_limit_kb"`
 	}
 
 	if err := dbConn.Table("contest_problems").
@@ -389,8 +420,8 @@ func GetContestProblem(contestID, problemID string) (*ContestProblemItem, error)
 		Title         string `gorm:"column:title"`
 		Difficulty    string `gorm:"column:difficulty"`
 		StatementPath string `gorm:"column:statement_path"`
-		TimeLimitMs      int `gorm:"column:problem_time_limit_ms"`
-		MemoryLimitKb    int `gorm:"column:problem_memory_limit_kb"`
+		TimeLimitMs   int    `gorm:"column:problem_time_limit_ms"`
+		MemoryLimitKb int    `gorm:"column:problem_memory_limit_kb"`
 	}
 
 	if err := dbConn.Table("contest_problems").
@@ -493,17 +524,17 @@ func GetContestSubmissionCount(contestID, problemID, userID string) (int64, erro
 
 // ContestSubmissionItem represents a submission within a contest
 type ContestSubmissionItem struct {
-	ID            string     `json:"id"`
-	ProblemID     string     `json:"problem_id"`
-	ProblemTitle  string     `json:"problem_title"`
-	UserID        string     `json:"user_id"`
-	Username      string     `json:"username"`
-	Language      string     `json:"language"`
-	Status        string     `json:"status"`
-	Score         *int       `json:"score,omitempty"`
-	ExecutionTime *int       `json:"execution_time,omitempty"`
-	MemoryUsage   *int       `json:"memory_usage,omitempty"`
-	SubmittedAt   time.Time  `json:"submitted_at"`
+	ID            string    `json:"id"`
+	ProblemID     string    `json:"problem_id"`
+	ProblemTitle  string    `json:"problem_title"`
+	UserID        string    `json:"user_id"`
+	Username      string    `json:"username"`
+	Language      string    `json:"language"`
+	Status        string    `json:"status"`
+	Score         *int      `json:"score,omitempty"`
+	ExecutionTime *int      `json:"execution_time,omitempty"`
+	MemoryUsage   *int      `json:"memory_usage,omitempty"`
+	SubmittedAt   time.Time `json:"submitted_at"`
 }
 
 // ListContestSubmissionsResponse represents paginated contest submissions
@@ -595,4 +626,3 @@ func GetSubmissionByID(submissionID string) (*models.Submission, error) {
 
 	return &submission, nil
 }
-
