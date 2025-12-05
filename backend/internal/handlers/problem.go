@@ -133,6 +133,23 @@ func GetProblem(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// ListTags returns all available tags (public endpoint)
+func ListTags(c *gin.Context) {
+	tags, err := repository.ListTags()
+	if err != nil {
+		log.Printf("[PROBLEM] Failed to list tags: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed_to_fetch_tags",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tags": tags,
+	})
+}
+
 // CreateProblemRequest represents the expected payload for creating a problem
 // Note: This is multipart form data, not JSON
 type CreateProblemRequest struct {

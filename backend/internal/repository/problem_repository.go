@@ -261,3 +261,20 @@ func AddTagToProblem(problemID, tagName string) error {
 	// Create problem_tag relationship
 	return db.DB.Exec("INSERT INTO problem_tags (problem_id, tag_id) VALUES (?, ?)", problemID, tagID).Error
 }
+
+// Tag represents a tag in the system
+type Tag struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+// ListTags returns all tags in the system
+func ListTags() ([]Tag, error) {
+	var tags []Tag
+	err := db.DB.Raw("SELECT id, name, slug FROM tags ORDER BY name ASC").Scan(&tags).Error
+	if err != nil {
+		return nil, err
+	}
+	return tags, nil
+}

@@ -72,6 +72,7 @@ func RegisterRoutes(r *gin.Engine) {
 	protected.POST("/problems/:id/submit", middleware.RequireRole(constants.StudentRoles...), handlers.SubmitProblem)
 
 	// Problem routes
+	protected.GET("/problem/tags", handlers.ListTags) // Public endpoint
 	protected.GET("/problems", middleware.RequireRole(constants.StudentRoles...), handlers.ListProblems)
 	protected.GET("/problems/:id", middleware.RequireRole(constants.StudentRoles...), handlers.GetProblem)
 	protected.POST("/problems", middleware.RequireRole(constants.InstructorRoles...), handlers.CreateProblem)
