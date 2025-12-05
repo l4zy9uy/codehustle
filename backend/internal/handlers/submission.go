@@ -245,17 +245,10 @@ func SubmitProblem(c *gin.Context) {
 // SubmissionDetailResponse represents detailed submission information
 type SubmissionDetailResponse struct {
 	ID              string                 `json:"id"`
-	ProblemID       string                 `json:"problem_id"`
-	UserID          string                 `json:"user_id"`
-	Problem         ProblemInfo            `json:"problem"`
 	Code            string                 `json:"code"`
 	Language        string                 `json:"language"`
 	LanguageVersion *string                `json:"language_version,omitempty"`
 	Status          string                 `json:"status"`
-	Score           *int                   `json:"score,omitempty"`
-	ExecutionTime   *int                   `json:"execution_time,omitempty"`
-	MemoryUsage     *int                   `json:"memory_usage,omitempty"`
-	CodeSizeBytes   *int                   `json:"code_size_bytes,omitempty"`
 	CompileLog      *string                `json:"compile_log,omitempty"`
 	RunLog          *string                `json:"run_log,omitempty"`
 	SubmittedAt     string                 `json:"submitted_at"`
@@ -270,25 +263,17 @@ type ProblemInfo struct {
 }
 
 type TestCaseResultDetail struct {
-	ID             uint         `json:"id"`
-	TestCaseID     string       `json:"test_case_id"`
-	TestCase       TestCaseInfo `json:"test_case"`
-	Status         string       `json:"status"`
-	Score          *int         `json:"score,omitempty"`
-	TimeMs         *int         `json:"time_ms,omitempty"`
-	MemoryKb       *int         `json:"memory_kb,omitempty"`
-	LogPath        *string      `json:"log_path,omitempty"`
-	CreatedAt      string       `json:"created_at"`
+	ID        uint   `json:"id"`
+	IsSample  bool   `json:"is_sample"`
+	Status    string `json:"status"`
+	Score     *int   `json:"score,omitempty"`
+	TimeMs    *int   `json:"time_ms,omitempty"`
+	MemoryKb  *int   `json:"memory_kb,omitempty"`
+	CreatedAt string `json:"created_at"`
 	// Test case details for wrong_answer cases
 	Input          *string `json:"input,omitempty"`
 	ExpectedOutput *string `json:"expected_output,omitempty"`
 	UserOutput     *string `json:"user_output,omitempty"`
-}
-
-type TestCaseInfo struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	IsSample bool   `json:"is_sample"`
 }
 
 type SubmissionSummary struct {
@@ -339,30 +324,13 @@ func GetSubmission(c *gin.Context) {
 		return
 	}
 
-	// Get problem info
-	problem, err := repository.GetProblem(submission.ProblemID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "failed_to_load_problem",
-			"message": err.Error(),
-		})
-		return
-	}
-
 	// Build response
 	response := SubmissionDetailResponse{
 		ID:              submission.ID,
-		ProblemID:       submission.ProblemID,
-		UserID:          submission.UserID,
-		Problem:         ProblemInfo{ID: problem.ID, Code: problem.Slug, Name: problem.Title},
 		Code:            submission.Code,
 		Language:        submission.Language,
 		LanguageVersion: submission.LanguageVersion,
 		Status:          submission.Status,
-		Score:           submission.Score,
-		ExecutionTime:   submission.ExecutionTime,
-		MemoryUsage:     submission.MemoryUsage,
-		CodeSizeBytes:   submission.CodeSizeBytes,
 		SubmittedAt:     submission.SubmittedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
@@ -376,7 +344,7 @@ func GetSubmission(c *gin.Context) {
 
 	// Build test case results
 	response.TestCaseResults = make([]TestCaseResultDetail, len(submission.TestCaseResults))
-	
+
 	// Check if we need to fetch test case details (for wrong_answer cases)
 	needTestDetails := false
 	for _, tc := range submission.TestCaseResults {
@@ -397,7 +365,7 @@ func GetSubmission(c *gin.Context) {
 			input          string
 			expectedOutput string
 		})
-		
+
 		for _, tc := range submission.TestCaseResults {
 			if tc.Status == "wrong_answer" && tc.TestCase.InputPath != "" {
 				// Fetch input
@@ -409,7 +377,7 @@ func GetSubmission(c *gin.Context) {
 							expectedOutputBytes = bytes
 						}
 					}
-					
+
 					testCaseDetails[tc.TestCaseID] = struct {
 						input          string
 						expectedOutput string
@@ -423,22 +391,14 @@ func GetSubmission(c *gin.Context) {
 	}
 
 	for i, tc := range submission.TestCaseResults {
-		testCaseInfo := TestCaseInfo{
-			ID:       tc.TestCase.ID,
-			Name:     tc.TestCase.Name,
-			IsSample: tc.TestCase.IsSample,
-		}
-		
 		result := TestCaseResultDetail{
-			ID:         tc.ID,
-			TestCaseID: tc.TestCaseID,
-			TestCase:   testCaseInfo,
-			Status:     tc.Status,
-			Score:      tc.Score,
-			TimeMs:     tc.TimeMs,
-			MemoryKb:   tc.MemoryKb,
-			LogPath:    tc.LogPath,
-			CreatedAt:  tc.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			ID:        tc.ID,
+			IsSample:  tc.TestCase.IsSample,
+			Status:    tc.Status,
+			Score:     tc.Score,
+			TimeMs:    tc.TimeMs,
+			MemoryKb:  tc.MemoryKb,
+			CreatedAt: tc.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 
 		// Add test case details for wrong_answer cases
@@ -449,7 +409,7 @@ func GetSubmission(c *gin.Context) {
 					result.ExpectedOutput = &details.expectedOutput
 				}
 			}
-			
+
 			// Fetch user output from MinIO if available
 			if tc.UserOutputPath != nil && *tc.UserOutputPath != "" {
 				if userOutputBytes, err := storage.GetFile(bucketName, *tc.UserOutputPath); err == nil {
@@ -477,13 +437,12 @@ func GetSubmission(c *gin.Context) {
 			if tc.Score != nil {
 				totalScore += *tc.Score
 			}
-			// Max score would be sum of all test case weights
-			// For now, we'll use the total score if all passed
-		}
-
-		if submission.Score != nil {
-			maxScore = *submission.Score // This should be the max possible score
-			// In a real implementation, you'd calculate this from test case weights
+			// Calculate max score from test case weights
+			if tc.TestCase.Weight > 0 {
+				maxScore += tc.TestCase.Weight
+			} else {
+				maxScore += 1 // Default weight
+			}
 		}
 
 		response.Summary = &SubmissionSummary{
